@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Future Card"
+version = "1.0.0"
+id = "artifacts/future-card"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24275
+
+[services.development]
+run = "pnpm --filter @workspace/future-card run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/future-card", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/future-card/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24275"
+BASE_PATH = "/"

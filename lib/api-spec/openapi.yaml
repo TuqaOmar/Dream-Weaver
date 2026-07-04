@@ -3,20 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Future Card API - Digital memory cards for children
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: cards
+    description: Memory card operations
+  - name: public
+    description: Public card view (for QR codes)
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +27,181 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /cards:
+    get:
+      operationId: listCards
+      tags: [cards]
+      summary: List all memory cards
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by child name or profession
+      responses:
+        "200":
+          description: List of cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Card"
+    post:
+      operationId: createCard
+      tags: [cards]
+      summary: Create a new memory card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardInput"
+      responses:
+        "201":
+          description: Created card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/{id}:
+    get:
+      operationId: getCard
+      tags: [cards]
+      summary: Get a memory card by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Card details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCard
+      tags: [cards]
+      summary: Update a memory card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardUpdate"
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCard
+      tags: [cards]
+      summary: Delete a memory card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted successfully
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards/{id}/generate:
+    post:
+      operationId: generateCardImage
+      tags: [cards]
+      summary: Trigger AI image generation for a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Generation started or completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards/stats/summary:
+    get:
+      operationId: getCardStats
+      tags: [cards]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Card statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardStats"
+
+  /cards/public/{id}:
+    get:
+      operationId: getPublicCard
+      tags: [public]
+      summary: Get public card view (for QR code scanning)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public card data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicCard"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +212,170 @@ components:
       required:
         - status
 
+    Card:
+      type: object
+      required:
+        - id
+        - childName
+        - profession
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        childName:
+          type: string
+        profession:
+          type: string
+        customProfession:
+          type: ["string", "null"]
+        childPhotoUrl:
+          type: ["string", "null"]
+        aiImageUrl:
+          type: ["string", "null"]
+        voiceMessageUrl:
+          type: ["string", "null"]
+        parentMessage:
+          type: ["string", "null"]
+        qrCodeUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, generating, completed]
+        language:
+          type: string
+          enum: [en, ar]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CardInput:
+      type: object
+      required:
+        - childName
+        - profession
+      properties:
+        childName:
+          type: string
+          minLength: 1
+        profession:
+          type: string
+          minLength: 1
+        customProfession:
+          type: string
+        childPhotoUrl:
+          type: string
+        voiceMessageUrl:
+          type: string
+        parentMessage:
+          type: string
+        language:
+          type: string
+          enum: [en, ar]
+
+    CardUpdate:
+      type: object
+      properties:
+        childName:
+          type: string
+          minLength: 1
+        profession:
+          type: string
+        customProfession:
+          type: string
+        childPhotoUrl:
+          type: string
+        aiImageUrl:
+          type: string
+        voiceMessageUrl:
+          type: string
+        parentMessage:
+          type: string
+        qrCodeUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, generating, completed]
+        language:
+          type: string
+          enum: [en, ar]
+
+    CardStats:
+      type: object
+      required:
+        - total
+        - completed
+        - drafts
+        - generating
+        - professionBreakdown
+        - recentCards
+      properties:
+        total:
+          type: integer
+        completed:
+          type: integer
+        drafts:
+          type: integer
+        generating:
+          type: integer
+        professionBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionCount"
+        recentCards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Card"
+
+    ProfessionCount:
+      type: object
+      required:
+        - profession
+        - count
+      properties:
+        profession:
+          type: string
+        count:
+          type: integer
+
+    PublicCard:
+      type: object
+      required:
+        - id
+        - childName
+        - profession
+        - createdAt
+      properties:
+        id:
+          type: string
+        childName:
+          type: string
+        profession:
+          type: string
+        customProfession:
+          type: ["string", "null"]
+        aiImageUrl:
+          type: ["string", "null"]
+        childPhotoUrl:
+          type: ["string", "null"]
+        voiceMessageUrl:
+          type: ["string", "null"]
+        parentMessage:
+          type: ["string", "null"]
+        language:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string

@@ -50,7 +50,7 @@ export const ListCardsResponse = zod.array(ListCardsResponseItem)
 
 export const CreateCardBody = zod.object({
   "childName": zod.string().min(1),
-  "profession": zod.string().min(1),
+  "profession": zod.string().min(1).optional(),
   "customProfession": zod.string().optional(),
   "childPhotoUrl": zod.string().optional(),
   "voiceMessageUrl": zod.string().optional(),

@@ -10,7 +10,7 @@ import { MemoryFrame } from '@/components/MemoryFrame';
 export default function MemoryPublicView() {
   const [, params] = useRoute('/memory/:id');
   const id = params?.id;
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   const { data: card, isLoading } = useGetPublicCard(id!, { 
     query: { enabled: !!id, queryKey: getGetPublicCardQueryKey(id!) } 
@@ -28,7 +28,7 @@ export default function MemoryPublicView() {
   }
 
   if (!card) {
-    return <div className="text-center py-20 text-xl font-serif">Memory not found.</div>;
+    return <div className="text-center py-20 text-xl font-serif">{t('common.memoryNotFound')}</div>;
   }
 
   const toggleAudio = () => {
@@ -59,7 +59,7 @@ export default function MemoryPublicView() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="w-full aspect-[4/5] md:aspect-[3/4] max-w-2xl mx-auto rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative mb-12"
+          className="w-full aspect-[2/3] max-w-2xl mx-auto rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative mb-12"
         >
           {card.childPhotoUrl || card.aiImageUrl ? (
             <MemoryFrame
@@ -69,13 +69,12 @@ export default function MemoryPublicView() {
               showQr={false}
             />
           ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">No image available</div>
+            <div className="w-full h-full bg-muted flex items-center justify-center">{t('common.noImage')}</div>
           )}
         </motion.div>
 
         <div className="w-full max-w-xl mx-auto space-y-12">
           <div className="text-center">
-            <p className="text-sm font-medium uppercase tracking-[0.25em] text-primary">Future {card.profession}</p>
             <h1 className="mt-3 text-5xl md:text-7xl font-serif text-foreground font-bold tracking-tight">
               {card.childName}
             </h1>
@@ -96,8 +95,8 @@ export default function MemoryPublicView() {
               >
                 {isPlaying ? <Square className="w-8 h-8 fill-current" /> : <Play className="w-10 h-10 ml-2 fill-current" />}
               </button>
-              <span className="text-muted-foreground font-medium uppercase tracking-widest text-sm">
-                Listen to the message
+                 <span className="text-muted-foreground font-medium uppercase tracking-widest text-sm">
+                   {t('memory.listen')}
               </span>
               <audio ref={audioRef} src={card.voiceMessageUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
             </motion.div>
@@ -124,7 +123,7 @@ export default function MemoryPublicView() {
           >
             <p className="font-serif text-lg text-primary">{t('memory.brand')}</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Created on {new Date(card.createdAt).toLocaleDateString()}
+               {t('memory.createdOn')} {new Date(card.createdAt).toLocaleDateString(language === 'ar' ? 'ar-JO' : 'en-US')}
             </p>
           </motion.div>
         </div>

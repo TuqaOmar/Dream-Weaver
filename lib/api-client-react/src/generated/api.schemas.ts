@@ -60,7 +60,7 @@ export interface CardInput {
   /** @minLength 1 */
   childName: string;
   /** @minLength 1 */
-  profession: string;
+  profession?: string;
   customProfession?: string;
   childPhotoUrl?: string;
   voiceMessageUrl?: string;

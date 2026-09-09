@@ -35,7 +35,7 @@ export function Navigation() {
             size="icon" 
             onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
             className="rounded-full w-9 h-9"
-            title="Toggle Language"
+            title={t('nav.toggleLanguage')}
           >
             <Globe className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
           </Button>

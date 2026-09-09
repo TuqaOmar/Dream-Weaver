@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils';
 
 interface Step1PhotoProps {
   photoUrl: string | null;
+  childName: string;
+  onChildNameChange: (name: string) => void;
   onPhotoSelected: (file: File) => void;
   onNext: () => void;
   isUploading: boolean;
 }
 
-export function Step1Photo({ photoUrl, onPhotoSelected, onNext, isUploading }: Step1PhotoProps) {
+export function Step1Photo({ photoUrl, childName, onChildNameChange, onPhotoSelected, onNext, isUploading }: Step1PhotoProps) {
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -64,11 +66,11 @@ export function Step1Photo({ photoUrl, onPhotoSelected, onNext, isUploading }: S
       >
         {photoUrl ? (
           <>
-            <img src={photoUrl} alt="Child" className="w-full h-full object-cover" />
+            <img src={photoUrl} alt={t('common.childPhotoAlt')} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Button variant="secondary" className="gap-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                 <UploadCloud className="w-4 h-4" />
-                Change Photo
+                {t('step1.change')}
               </Button>
             </div>
             <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.2)] rounded-3xl" />
@@ -99,6 +101,20 @@ export function Step1Photo({ photoUrl, onPhotoSelected, onNext, isUploading }: S
         )}
       </div>
 
+      <div className="w-full max-w-sm space-y-2 text-start">
+        <label htmlFor="child-name" className="text-sm font-medium text-foreground">
+          {t('step1.name')}
+        </label>
+        <input
+          id="child-name"
+          value={childName}
+          onChange={(event) => onChildNameChange(event.target.value)}
+          placeholder={t('step1.namePlaceholder')}
+          className="h-12 w-full rounded-2xl border border-border bg-white/70 px-4 text-foreground outline-none transition-shadow focus:border-primary focus:ring-4 focus:ring-primary/10"
+          data-testid="input-child-name"
+        />
+      </div>
+
       <input 
         type="file" 
         accept="image/*" 
@@ -119,7 +135,7 @@ export function Step1Photo({ photoUrl, onPhotoSelected, onNext, isUploading }: S
       <Button 
         size="lg" 
         className="w-full max-w-sm rounded-full h-14 text-lg" 
-        disabled={!photoUrl || isUploading}
+        disabled={!photoUrl || !childName.trim() || isUploading}
         onClick={onNext}
       >
         {t('common.next')}

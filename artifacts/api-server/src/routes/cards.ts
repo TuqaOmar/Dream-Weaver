@@ -105,7 +105,7 @@ router.post("/cards", async (req: Request, res: Response) => {
   try {
     const {
       childName,
-      profession,
+      profession = "memory",
       customProfession,
       childPhotoUrl,
       voiceMessageUrl,
@@ -113,7 +113,7 @@ router.post("/cards", async (req: Request, res: Response) => {
       language = "en",
     } = req.body as {
       childName: string;
-      profession: string;
+      profession?: string;
       customProfession?: string;
       childPhotoUrl?: string;
       voiceMessageUrl?: string;
@@ -121,8 +121,8 @@ router.post("/cards", async (req: Request, res: Response) => {
       language?: string;
     };
 
-    if (!childName || !profession) {
-      res.status(400).json({ error: "childName and profession are required" });
+    if (!childName) {
+      res.status(400).json({ error: "childName is required" });
       return;
     }
 

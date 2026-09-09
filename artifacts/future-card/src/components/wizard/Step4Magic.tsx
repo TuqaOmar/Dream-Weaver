@@ -21,9 +21,9 @@ export function Step4Magic({ isCreating, onComplete }: Step4MagicProps) {
     { id: 'creatingQr', key: 'step4.creatingQr' }
   ];
 
-  // Simulate progress steps for visual feedback while the server generates
-  // the profession image and QR code. The parent switches isCreating to
-  // false only after that request succeeds.
+  // Simulate progress steps for visual feedback while the server preserves
+  // the original photo and creates the QR code. The parent switches
+  // isCreating to false only after that request succeeds.
   useEffect(() => {
     if (!isCreating) {
       setActiveStep(steps.length);

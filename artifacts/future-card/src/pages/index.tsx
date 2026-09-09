@@ -26,7 +26,7 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-sm font-medium mb-4">
               <Sparkles className="w-4 h-4 text-accent" />
-              <span>A magical keepsake for your child</span>
+              <span>{t('hero.badge')}</span>
             </div>
             
             <h1 className="text-5xl md:text-7xl font-serif text-foreground leading-tight tracking-tight">
@@ -62,22 +62,22 @@ export default function Home() {
               <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-xl font-medium">AI Magic</h3>
-              <p className="text-muted-foreground">Transform their photo into a beautiful future vision.</p>
+              <h3 className="font-serif text-xl font-medium">{t('home.magic.title')}</h3>
+              <p className="text-muted-foreground">{t('home.magic.description')}</p>
             </div>
             <div className="space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4">
                 <Heart className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-xl font-medium">Eternal Voice</h3>
-              <p className="text-muted-foreground">Leave a voice message they can listen to forever.</p>
+              <h3 className="font-serif text-xl font-medium">{t('home.voice.title')}</h3>
+              <p className="text-muted-foreground">{t('home.voice.description')}</p>
             </div>
             <div className="space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-green-500/10 text-green-600 flex items-center justify-center mx-auto mb-4">
-                <div className="font-serif text-2xl font-bold">QR</div>
+                <div className="font-serif text-2xl font-bold" aria-label={t('common.qrAlt')}>QR</div>
               </div>
-              <h3 className="font-serif text-xl font-medium">Physical Keepsake</h3>
-              <p className="text-muted-foreground">Print and share via QR code with family.</p>
+              <h3 className="font-serif text-xl font-medium">{t('home.qr.title')}</h3>
+              <p className="text-muted-foreground">{t('home.qr.description')}</p>
             </div>
           </motion.div>
         </div>

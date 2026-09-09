@@ -25,7 +25,7 @@ export default function Dashboard() {
   const deleteCard = useDeleteCard();
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this memory?')) {
+    if (confirm(t('common.confirmDelete'))) {
       await deleteCard.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetCardStatsQueryKey() });
@@ -51,7 +51,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-serif font-semibold text-foreground mb-2">{t('dashboard.title')}</h1>
-            <p className="text-muted-foreground">Manage and cherish your digital memories.</p>
+            <p className="text-muted-foreground">{t('dashboard.description')}</p>
           </div>
           
           {stats && (
@@ -76,7 +76,7 @@ export default function Dashboard() {
             <Input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or profession..." 
+              placeholder={t('dashboard.searchPlaceholder')}
               className="pl-10 h-12 rounded-xl bg-white dark:bg-card shadow-sm border-border"
             />
           </div>
@@ -106,13 +106,13 @@ export default function Dashboard() {
                 key={card.id} 
                 className="group relative flex flex-col bg-card rounded-3xl border border-border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
-                <Link href={`/card/${card.id}`} className="block relative aspect-[4/3] overflow-hidden bg-muted">
+                <Link href={`/card/${card.id}`} className="block relative aspect-[2/3] overflow-hidden bg-muted">
                   {(card.childPhotoUrl || card.aiImageUrl) ? (
                     <MemoryFrame
                       src={card.childPhotoUrl || card.aiImageUrl || ''}
                       alt={card.childName}
                       qrCodeUrl={card.qrCodeUrl}
-                      className="h-full aspect-auto rounded-none p-2 shadow-none transition-transform duration-700 group-hover:scale-105"
+                      className="h-full aspect-auto rounded-none shadow-none transition-transform duration-700 group-hover:scale-105"
                     />
                   ) : card.childPhotoUrl ? (
                     <div className="w-full h-full relative">
@@ -135,7 +135,9 @@ export default function Dashboard() {
                 <div className="p-4 flex items-center justify-between border-t border-border bg-card">
                   <div className="text-xs text-muted-foreground font-medium">
                     <span className="block font-serif text-lg text-foreground">{card.childName}</span>
-                    <span>{card.profession} · {format(new Date(card.createdAt), 'MMM d, yyyy')}</span>
+                    <span>{language === 'ar'
+                      ? new Date(card.createdAt).toLocaleDateString('ar-JO')
+                      : format(new Date(card.createdAt), 'MMM d, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(card.id)}>
@@ -160,7 +162,7 @@ export default function Dashboard() {
             </div>
             <h3 className="text-2xl font-serif text-foreground mb-2">{t('dashboard.empty')}</h3>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Your generated memories will appear here. Start creating your first beautiful keepsake.
+              {t('dashboard.emptyDescription')}
             </p>
             <Link href="/create">
               <Button size="lg" className="rounded-full shadow-lg">

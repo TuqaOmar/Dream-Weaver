@@ -63,7 +63,7 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
       }, 1000);
     } catch (err) {
       console.error("Error accessing microphone", err);
-      alert("Could not access microphone. Please check permissions or upload an audio file instead.");
+      alert(t('error.microphone'));
     }
   };
 
@@ -194,8 +194,8 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
               </div>
               
               <div className="w-full flex justify-between items-center border-t border-border pt-4">
-                <span className="text-sm font-medium text-primary flex items-center gap-2">
-                  <Volume2 className="w-4 h-4" /> Audio ready
+                   <span className="text-sm font-medium text-primary flex items-center gap-2">
+                   <Volume2 className="w-4 h-4" /> {t('step3.audioReady')}
                 </span>
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete}>
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -215,11 +215,11 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
       </div>
 
       <div className="w-full max-w-md space-y-2 pt-4">
-        <label className="text-sm font-medium text-foreground ml-1">Write a written message (optional)</label>
+        <label className="text-sm font-medium text-foreground ml-1">{t('step3.writtenMessage')}</label>
         <Textarea 
           value={parentMessage}
           onChange={(e) => onChange({ parentMessage: e.target.value })}
-          placeholder="I will always be your biggest fan..."
+          placeholder={t('step3.writtenPlaceholder')}
           className="min-h-[120px] rounded-2xl resize-none bg-white/50 dark:bg-black/50 backdrop-blur"
         />
       </div>

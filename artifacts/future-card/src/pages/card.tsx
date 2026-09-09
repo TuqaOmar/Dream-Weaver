@@ -54,8 +54,8 @@ export default function CardView() {
     if (navigator.share && card) {
       try {
         await navigator.share({
-          title: `Future Card for ${card.childName}`,
-          text: `Check out this memory card for ${card.childName}!`,
+          title: `${t('memory.brand')} - ${card.childName}`,
+          text: `${t('card.shareMemoryTitle')}: ${card.childName}`,
           url: `${window.location.origin}/memory/${card.id}`,
         });
       } catch (err) {
@@ -63,7 +63,7 @@ export default function CardView() {
       }
     } else {
       navigator.clipboard.writeText(`${window.location.origin}/memory/${card?.id}`);
-      alert("Link copied to clipboard!");
+      alert(t('common.linkCopied'));
     }
   };
 
@@ -76,7 +76,7 @@ export default function CardView() {
   }
 
   if (!card) {
-    return <div className="text-center py-20">Card not found.</div>;
+    return <div className="text-center py-20">{t('common.cardNotFound')}</div>;
   }
 
   const isGenerating = card.status === 'generating';
@@ -88,13 +88,13 @@ export default function CardView() {
         <div className="flex items-center justify-between mb-8 print:hidden">
           <Link href="/dashboard">
             <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+              <ArrowLeft className="w-4 h-4" /> {t('card.backDashboard')}
             </Button>
           </Link>
           <div className="flex gap-2">
             <Link href="/create">
               <Button variant="outline" className="gap-2">
-                <RefreshCw className="w-4 h-4" /> Create Another
+                <RefreshCw className="w-4 h-4" /> {t('card.createAnother')}
               </Button>
             </Link>
           </div>
@@ -109,11 +109,11 @@ export default function CardView() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-card rounded-[2.5rem] border shadow-2xl shadow-black/5 overflow-hidden print:shadow-none print:border-none print:rounded-none"
             >
-              <div className="aspect-[4/5] relative bg-muted">
+              <div className="aspect-[2/3] relative bg-muted">
                 {isGenerating ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-primary/5 gap-4">
                     <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                     <p className="text-primary font-medium text-lg animate-pulse">Preparing your framed memory...</p>
+                     <p className="text-primary font-medium text-lg animate-pulse">{t('card.preparing')}</p>
                   </div>
                 ) : memoryImageUrl ? (
                   <MemoryFrame
@@ -124,7 +124,7 @@ export default function CardView() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted">
-                    No image generated.
+                     {t('common.noImageGenerated')}
                   </div>
                 )}
                 
@@ -133,7 +133,6 @@ export default function CardView() {
               <div className="p-8 bg-card flex flex-col gap-6">
                 <div>
                   <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{card.childName}</h1>
-                  <p className="mt-2 text-sm font-medium uppercase tracking-[0.22em] text-primary">{card.profession}</p>
                 </div>
                 {card.parentMessage && (
                   <div className="text-lg italic font-serif text-foreground/80 leading-relaxed border-l-4 border-accent pl-6 py-2">
@@ -165,14 +164,14 @@ export default function CardView() {
           {/* Actions & QR Sidebar */}
           <div className="lg:col-span-2 space-y-6 print:hidden">
             <div className="bg-card border rounded-3xl p-6 shadow-sm">
-              <h3 className="font-serif text-xl font-medium mb-4">Share this Memory</h3>
+              <h3 className="font-serif text-xl font-medium mb-4">{t('card.shareMemoryTitle')}</h3>
               
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <Button variant="outline" className="h-14 rounded-xl gap-2 text-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/50" onClick={handleShare} disabled={isGenerating}>
-                  <Share2 className="w-5 h-5" /> Share Link
+                  <Share2 className="w-5 h-5" /> {t('card.shareLink')}
                 </Button>
                 <Button variant="outline" className="h-14 rounded-xl gap-2 text-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/50" onClick={handlePrint} disabled={isGenerating}>
-                  <Printer className="w-5 h-5" /> Print
+                  <Printer className="w-5 h-5" /> {t('card.print')}
                 </Button>
               </div>
               
@@ -180,24 +179,24 @@ export default function CardView() {
                 {card.qrCodeUrl ? (
                   <>
                     <div className="bg-white p-2 rounded-xl shadow-sm">
-                      <img src={card.qrCodeUrl} alt="QR Code" className="w-40 h-40 mix-blend-multiply" />
+                      <img src={card.qrCodeUrl} alt={t('common.qrAlt')} className="w-40 h-40 mix-blend-multiply" />
                     </div>
                     <p className="text-sm text-muted-foreground font-medium">{t('card.scanToShare')}</p>
                   </>
                 ) : (
                   <div className="w-40 h-40 bg-background/50 rounded-xl flex items-center justify-center text-muted-foreground text-sm">
-                    {isGenerating ? "Generating QR..." : "No QR Code"}
+                    {isGenerating ? t('common.generatingQr') : t('common.noQr')}
                   </div>
                 )}
               </div>
             </div>
             
             <div className="bg-primary/5 border border-primary/10 rounded-3xl p-6">
-              <h3 className="font-serif text-xl font-medium mb-2 text-primary">A Note on Storage</h3>
-              <p className="text-sm text-muted-foreground mb-4">This memory is securely stored. You can access it anytime from your dashboard or via the unique link.</p>
+              <h3 className="font-serif text-xl font-medium mb-2 text-primary">{t('card.storageTitle')}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{t('card.storageDescription')}</p>
               <Link href="/dashboard">
                 <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 rounded-xl">
-                  <LayoutDashboard className="w-4 h-4 mr-2" /> Go to Dashboard
+                  <LayoutDashboard className="w-4 h-4 mr-2" /> {t('nav.dashboard')}
                 </Button>
               </Link>
             </div>

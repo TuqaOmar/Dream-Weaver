@@ -13,10 +13,10 @@ export function Navigation() {
       <div className="container mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-lg group-hover:scale-105 transition-transform">
-            F
+            {t('memory.brand').charAt(0)}
           </div>
           <span className="font-serif font-semibold text-xl tracking-tight text-foreground">
-            Future Card
+            {t('memory.brand')}
           </span>
         </Link>
         

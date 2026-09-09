@@ -7,6 +7,7 @@ import { Download, Share2, Printer, Play, ArrowLeft, RefreshCw, LayoutDashboard 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
+import { MemoryFrame } from '@/components/MemoryFrame';
 
 export default function CardView() {
   const [, params] = useRoute('/card/:id');
@@ -79,6 +80,7 @@ export default function CardView() {
   }
 
   const isGenerating = card.status === 'generating';
+  const memoryImageUrl = card.childPhotoUrl || card.aiImageUrl;
 
   return (
     <div className="min-h-screen bg-background pt-6 pb-20 print:bg-white print:pt-0">
@@ -111,25 +113,28 @@ export default function CardView() {
                 {isGenerating ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-primary/5 gap-4">
                     <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                    <p className="text-primary font-medium text-lg animate-pulse">Generating Masterpiece...</p>
+                     <p className="text-primary font-medium text-lg animate-pulse">Preparing your framed memory...</p>
                   </div>
-                ) : card.aiImageUrl ? (
-                  <img src={card.aiImageUrl} alt={card.childName} className="w-full h-full object-cover" />
+                ) : memoryImageUrl ? (
+                  <MemoryFrame
+                    src={memoryImageUrl}
+                    alt={card.childName}
+                    qrCodeUrl={card.qrCodeUrl}
+                    className="h-full aspect-auto rounded-none shadow-none"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted">
                     No image generated.
                   </div>
                 )}
                 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                
-                <div className="absolute bottom-0 left-0 w-full p-8 text-white z-10">
-                  <h1 className="text-5xl font-serif font-bold tracking-tight mb-2 text-shadow-sm">{card.childName}</h1>
-                  <p className="text-xl text-white/90 font-medium uppercase tracking-widest">{card.profession}</p>
-                </div>
               </div>
               
               <div className="p-8 bg-card flex flex-col gap-6">
+                <div>
+                  <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{card.childName}</h1>
+                  <p className="mt-2 text-sm font-medium uppercase tracking-[0.22em] text-primary">{card.profession}</p>
+                </div>
                 {card.parentMessage && (
                   <div className="text-lg italic font-serif text-foreground/80 leading-relaxed border-l-4 border-accent pl-6 py-2">
                     "{card.parentMessage}"

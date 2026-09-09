@@ -283,7 +283,11 @@ router.post("/cards/:id/generate", async (req: Request, res: Response) => {
       entrepreneur: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
     };
 
+    // Preserve the exact uploaded photo. The selected profession is used as
+    // card metadata; the frontend adds a decorative frame without changing
+    // or cropping the child's original image.
     const aiImageUrl =
+      c.childPhotoUrl ||
       professionImageMap[profession] ||
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80";
 

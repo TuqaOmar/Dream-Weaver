@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { MemoryFrame } from '@/components/MemoryFrame';
 
 export default function Dashboard() {
   const { t, language } = useLanguage();
@@ -106,8 +107,13 @@ export default function Dashboard() {
                 className="group relative flex flex-col bg-card rounded-3xl border border-border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <Link href={`/card/${card.id}`} className="block relative aspect-[4/3] overflow-hidden bg-muted">
-                  {card.aiImageUrl ? (
-                    <img src={card.aiImageUrl} alt={card.childName} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  {(card.childPhotoUrl || card.aiImageUrl) ? (
+                    <MemoryFrame
+                      src={card.childPhotoUrl || card.aiImageUrl || ''}
+                      alt={card.childName}
+                      qrCodeUrl={card.qrCodeUrl}
+                      className="h-full aspect-auto rounded-none p-2 shadow-none transition-transform duration-700 group-hover:scale-105"
+                    />
                   ) : card.childPhotoUrl ? (
                     <div className="w-full h-full relative">
                       <img src={card.childPhotoUrl} alt={card.childName} className="w-full h-full object-cover opacity-50 blur-sm" />
@@ -121,13 +127,6 @@ export default function Dashboard() {
                     </div>
                   )}
                   
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60" />
-                  
-                  <div className="absolute bottom-0 left-0 w-full p-6 text-white flex flex-col gap-1">
-                    <h3 className="font-serif text-2xl font-medium tracking-wide">{card.childName}</h3>
-                    <p className="text-white/80 font-medium">{card.profession}</p>
-                  </div>
-                  
                   <div className="absolute top-4 right-4">
                     {getStatusBadge(card.status)}
                   </div>
@@ -135,7 +134,8 @@ export default function Dashboard() {
 
                 <div className="p-4 flex items-center justify-between border-t border-border bg-card">
                   <div className="text-xs text-muted-foreground font-medium">
-                    {format(new Date(card.createdAt), 'MMM d, yyyy')}
+                    <span className="block font-serif text-lg text-foreground">{card.childName}</span>
+                    <span>{card.profession} · {format(new Date(card.createdAt), 'MMM d, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(card.id)}>

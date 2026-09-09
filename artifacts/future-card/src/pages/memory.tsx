@@ -5,6 +5,7 @@ import { Play, Square } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { MemoryFrame } from '@/components/MemoryFrame';
 
 export default function MemoryPublicView() {
   const [, params] = useRoute('/memory/:id');
@@ -44,9 +45,9 @@ export default function MemoryPublicView() {
     <div className="min-h-[100dvh] w-full relative bg-background overflow-x-hidden selection:bg-primary/20">
       {/* Dynamic atmospheric background based on image */}
       <div className="fixed inset-0 pointer-events-none">
-        {card.aiImageUrl && (
+        {(card.childPhotoUrl || card.aiImageUrl) && (
           <>
-            <img src={card.aiImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[100px] scale-110" />
+            <img src={card.childPhotoUrl || card.aiImageUrl || ''} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[100px] scale-110" />
             <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
           </>
         )}
@@ -60,35 +61,25 @@ export default function MemoryPublicView() {
           transition={{ duration: 1, ease: "easeOut" }}
           className="w-full aspect-[4/5] md:aspect-[3/4] max-w-2xl mx-auto rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative mb-12"
         >
-          {card.aiImageUrl ? (
-            <img src={card.aiImageUrl} alt={card.childName} className="w-full h-full object-cover" />
+          {card.childPhotoUrl || card.aiImageUrl ? (
+            <MemoryFrame
+              src={card.childPhotoUrl || card.aiImageUrl || ''}
+              alt={card.childName}
+              className="h-full aspect-auto rounded-none shadow-none"
+              showQr={false}
+            />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">No image available</div>
           )}
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-          
-          <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 text-center flex flex-col items-center">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="inline-block px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-sm font-medium tracking-widest uppercase mb-4"
-            >
-              Future {card.profession}
-            </motion.div>
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.8 }}
-              className="text-5xl md:text-7xl font-serif text-white font-bold tracking-tight text-shadow-lg"
-            >
-              {card.childName}
-            </motion.h1>
-          </div>
         </motion.div>
 
         <div className="w-full max-w-xl mx-auto space-y-12">
+          <div className="text-center">
+            <p className="text-sm font-medium uppercase tracking-[0.25em] text-primary">Future {card.profession}</p>
+            <h1 className="mt-3 text-5xl md:text-7xl font-serif text-foreground font-bold tracking-tight">
+              {card.childName}
+            </h1>
+          </div>
           {card.voiceMessageUrl && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

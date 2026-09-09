@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Step1Photo } from '@/components/wizard/Step1Photo';
 import { Step2Profession } from '@/components/wizard/Step2Profession';
@@ -84,15 +84,8 @@ export default function Create() {
         }
       });
 
-      // 4. Trigger AI Generation (async)
-      if (card.id) {
-        // We don't await this, it runs in background
-        generateImage.mutate({ id: card.id });
-      }
-
       queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
       
-      // Step 4 will show progress and then call onComplete
       return card.id;
 
     } catch (error) {
@@ -118,11 +111,34 @@ export default function Create() {
       if (id) {
         setCreatedCardId(id);
         setStep(4);
+
+        // Keep the magic screen visible while the server creates the
+        // profession image and QR code. Previously this ran in the
+        // background and isCreating never became false, so the wizard
+        // stayed forever on "Creating QR Code".
+        try {
+          await generateImage.mutateAsync({ id });
+          setIsCreating(false);
+        } catch (error) {
+          console.error(error);
+          setIsCreating(false);
+          toast({
+            title: "We couldn't finish your memory",
+            description: "Please try again. Your photo and message are safe.",
+            variant: "destructive"
+          });
+        }
       }
     } else {
       setStep(s => s + 1);
     }
   };
+
+  const handleMagicComplete = useCallback(() => {
+    if (createdCardId) {
+      setLocation(`/card/${createdCardId}`);
+    }
+  }, [createdCardId, setLocation]);
 
   return (
     <div className="min-h-screen pt-20 pb-10 bg-background bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-accent/5">
@@ -176,7 +192,7 @@ export default function Create() {
               <Step4Magic 
                 key="step4"
                 isCreating={isCreating} 
-                onComplete={() => setLocation(`/card/${createdCardId}`)} 
+                onComplete={handleMagicComplete}
               />
             )}
           </AnimatePresence>

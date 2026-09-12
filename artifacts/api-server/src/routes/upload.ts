@@ -1,4 +1,4 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -47,7 +47,7 @@ const upload = multer({
 });
 
 // Serve uploaded files statically
-router.get("/uploads/:filename", (req: Request, res: Response) => {
+router.get("/uploads/:filename", (req: any, res: any) => {
   const safe = path.basename(String(req.params.filename));
   const filePath = path.join(uploadsDir, safe);
   res.sendFile(filePath);
@@ -57,7 +57,7 @@ router.get("/uploads/:filename", (req: Request, res: Response) => {
 router.post(
   "/upload/photo",
   upload.single("file"),
-  (req: Request, res: Response, next: NextFunction) => {
+  (req: any, res: any) => {
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded" });
       return;
@@ -71,7 +71,7 @@ router.post(
 router.post(
   "/upload/voice",
   upload.single("file"),
-  (req: Request, res: Response, next: NextFunction) => {
+  (req: any, res: any) => {
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded" });
       return;
@@ -82,7 +82,7 @@ router.post(
 );
 
 // Multer error handler
-router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+router.use((err: any, _req: any, res: any, _next: any) => {
   if (err instanceof multer.MulterError || err.message?.startsWith("File type")) {
     res.status(400).json({ error: err.message });
     return;

@@ -1,4 +1,6 @@
-import { Router, type Request, type Response } from "express";
+import { Router } from "express";
+type Request = any;
+type Response = any;
 import { eq, ilike, or, sql } from "drizzle-orm";
 import { db, cardsTable } from "@workspace/db";
 import { randomUUID } from "crypto";

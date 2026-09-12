@@ -1,30 +1,14 @@
 import { Router } from "express";
 import multer from "multer";
-import path from "path";
-import { randomUUID } from "crypto";
-import fs from "fs";
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || ".bin";
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
+// Use memory storage for Vercel Serverless environment
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (_req, file, cb) => {
     const allowed = [
       "image/jpeg",
@@ -46,11 +30,10 @@ const upload = multer({
   },
 });
 
-// Serve uploaded files statically
-router.get("/uploads/:filename", (req: any, res: any) => {
-  const safe = path.basename(String(req.params.filename));
-  const filePath = path.join(uploadsDir, safe);
-  res.sendFile(filePath);
+// Since we use Data URIs, GET /api/uploads is no longer used for new uploads,
+// but we can keep a stub just in case
+router.get("/uploads/:filename", (_req: any, res: any) => {
+  res.status(404).send("Not found");
 });
 
 // POST /api/upload/photo
@@ -62,8 +45,9 @@ router.post(
       res.status(400).json({ error: "No file uploaded" });
       return;
     }
-    const url = `/api/uploads/${req.file.filename}`;
-    res.json({ url, filename: req.file.filename });
+    const b64 = req.file.buffer.toString('base64');
+    const url = `data:${req.file.mimetype};base64,${b64}`;
+    res.json({ url, filename: "base64-image" });
   },
 );
 
@@ -76,8 +60,9 @@ router.post(
       res.status(400).json({ error: "No file uploaded" });
       return;
     }
-    const url = `/api/uploads/${req.file.filename}`;
-    res.json({ url, filename: req.file.filename });
+    const b64 = req.file.buffer.toString('base64');
+    const url = `data:${req.file.mimetype};base64,${b64}`;
+    res.json({ url, filename: "base64-audio" });
   },
 );
 

@@ -294,17 +294,6 @@ router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
     }
 
     const card = existing[0];
-    
-    // If we want to delete the file from disk:
-    if (card.childPhotoUrl && card.childPhotoUrl.startsWith("/api/uploads/")) {
-      const filename = card.childPhotoUrl.replace("/api/uploads/", "");
-      const fs = require("fs");
-      const path = require("path");
-      const filePath = path.join(process.cwd(), "uploads", filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
 
     const [updated] = await db
       .update(cardsTable)

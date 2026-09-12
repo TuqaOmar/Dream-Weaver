@@ -62,7 +62,7 @@ export function MemoryFrame({
           <img
             src={src}
             alt={alt}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
             data-testid="img-memory-original"
           />
         </div>

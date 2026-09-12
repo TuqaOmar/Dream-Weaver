@@ -9,7 +9,7 @@ export function Navigation() {
   const { language, setLanguage, t, isRTL } = useLanguage();
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/60 backdrop-blur-xl dark:bg-black/60 transition-colors">
+    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/60 backdrop-blur-xl dark:bg-black/60 transition-colors print:hidden">
       <div className="container mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-serif font-bold text-lg group-hover:scale-105 transition-transform">
@@ -21,7 +21,7 @@ export function Navigation() {
         </Link>
         
         <div className="flex items-center gap-2 sm:gap-4">
-          {location !== '/' && location !== '/create' && !location.startsWith('/memory/') && (
+          {location !== '/' && location !== '/create' && !location.startsWith('/memory/') && !location.startsWith('/listen/') && (
             <Link href="/dashboard" className="hidden sm:flex">
               <Button variant="ghost" className="gap-2 font-medium">
                 <LayoutDashboard className="w-4 h-4" />
@@ -40,7 +40,7 @@ export function Navigation() {
             <Globe className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
           </Button>
 
-          {location !== '/create' && !location.startsWith('/memory/') && (
+          {location !== '/create' && !location.startsWith('/memory/') && !location.startsWith('/listen/') && (
             <Link href="/create">
               <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
                 <PlusCircle className="w-4 h-4" />

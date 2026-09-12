@@ -11,6 +11,7 @@ import Create from '@/pages/create';
 import Dashboard from '@/pages/dashboard';
 import CardView from '@/pages/card';
 import MemoryPublicView from '@/pages/memory';
+import ListenPublicView from '@/pages/listen';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -19,6 +20,9 @@ function Router() {
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <Switch>
+        <Route path="/listen/:id">
+          <ListenPublicView />
+        </Route>
         <Route path="/memory/:id">
           <MemoryPublicView />
         </Route>

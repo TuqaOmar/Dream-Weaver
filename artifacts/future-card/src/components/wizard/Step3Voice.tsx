@@ -19,6 +19,8 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -35,10 +37,52 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
     };
   }, [isRecording]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setPlaybackTime(audio.currentTime);
+    const handleDuration = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setAudioDuration(audio.duration);
+      }
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setPlaybackTime(0);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleDuration);
+    audio.addEventListener('durationchange', handleDuration);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleDuration);
+      audio.removeEventListener('durationchange', handleDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [voiceBlobUrl]);
+
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert(t('error.microphone'));
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : '';
+
+      const options = mimeType ? { mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -47,9 +91,14 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const actualType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+        const ext = actualType.includes('mp4') ? 'mp4' : actualType.includes('ogg') ? 'ogg' : 'webm';
+        const blob = new Blob(chunksRef.current, { type: actualType });
         const url = URL.createObjectURL(blob);
-        const file = new File([blob], 'voice-message.webm', { type: 'audio/webm' });
+        const file = new File([blob], `voice-message.${ext}`, { type: actualType });
+        setPlaybackTime(0);
+        setAudioDuration(0);
+        setIsPlaying(false);
         onChange({ voiceBlobUrl: url, voiceFile: file });
         stream.getTracks().forEach(track => track.stop());
       };
@@ -76,34 +125,55 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
   };
 
   const togglePlayback = () => {
-    if (!audioRef.current || !voiceBlobUrl) return;
-    
+    const audio = audioRef.current;
+    if (!audio || !voiceBlobUrl) return;
+
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => console.error("Audio play error:", err));
     }
-    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = Number(e.target.value);
+    audio.currentTime = newTime;
+    setPlaybackTime(newTime);
   };
 
   const handleDelete = () => {
     onChange({ voiceBlobUrl: null, voiceFile: null });
     setDuration(0);
+    setPlaybackTime(0);
+    setAudioDuration(0);
     setIsPlaying(false);
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      setPlaybackTime(0);
+      setAudioDuration(0);
+      setIsPlaying(false);
       onChange({ voiceBlobUrl: url, voiceFile: file });
     }
   };
 
   const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -165,40 +235,68 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center z-10 w-full max-w-md space-y-6">
-            <div className="w-full bg-white dark:bg-black/40 rounded-2xl p-6 shadow-sm border border-border/50 flex flex-col items-center gap-6">
-              <div className="w-full flex items-center gap-4">
+          <div className="flex flex-col items-center z-10 w-full max-w-md space-y-4">
+            <div className="w-full bg-white dark:bg-black/40 rounded-3xl p-6 shadow-sm border border-border/50 flex flex-col gap-5">
+              <div className="flex items-center gap-4">
                 <button
                   onClick={togglePlayback}
-                  className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex flex-shrink-0 items-center justify-center hover:scale-105 transition-transform"
+                  className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex flex-shrink-0 items-center justify-center hover:scale-105 transition-transform shadow-md"
                 >
-                  {isPlaying ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
+                  {isPlaying ? (
+                    <Square className="w-5 h-5 fill-current" />
+                  ) : (
+                    <Play className="w-6 h-6 ml-0.5 fill-current" />
+                  )}
                 </button>
                 
-                <div className="flex-1 h-12 flex items-center gap-1 opacity-70">
-                  {/* Fake waveform */}
-                  {Array.from({ length: 30 }).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className={cn(
-                        "w-1.5 bg-primary/60 rounded-full transition-all duration-150",
-                        isPlaying ? "animate-pulse" : ""
-                      )}
-                      style={{ 
-                        height: isPlaying ? `${Math.max(10, Math.random() * 40)}px` : '10px',
-                        animationDelay: `${i * 0.05}s`
-                      }}
-                    />
-                  ))}
+                {/* Waveform Visualization synchronized with playback */}
+                <div className="flex-1 h-12 flex items-center justify-between gap-1 px-1">
+                  {Array.from({ length: 26 }).map((_, i) => {
+                    const percent = (audioDuration || duration) > 0 ? (playbackTime / (audioDuration || duration)) * 100 : 0;
+                    const isPast = (i / 26) * 100 <= percent;
+                    return (
+                      <div 
+                        key={i} 
+                        className={cn(
+                          "w-1.5 rounded-full transition-all duration-150",
+                          isPast ? "bg-primary" : "bg-primary/20 dark:bg-primary/30",
+                          isPlaying ? "animate-pulse" : ""
+                        )}
+                        style={{ 
+                          height: isPlaying 
+                            ? `${Math.max(10, Math.sin(i * 0.6 + playbackTime * 6) * 26 + 15)}px` 
+                            : isPast ? '18px' : '10px'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Progress Slider and Accurate Time Counter */}
+              <div className="w-full space-y-1.5">
+                <input
+                  type="range"
+                  min="0"
+                  max={audioDuration || duration || 100}
+                  step="0.1"
+                  value={playbackTime}
+                  onChange={handleSeek}
+                  className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
+                />
+                <div className="flex justify-between items-center text-xs font-mono text-muted-foreground px-0.5">
+                  <span className="font-semibold text-foreground/80">{formatTime(playbackTime)}</span>
+                  <span>{formatTime(audioDuration || duration)}</span>
                 </div>
               </div>
               
               <div className="w-full flex justify-between items-center border-t border-border pt-4">
-                   <span className="text-sm font-medium text-primary flex items-center gap-2">
-                   <Volume2 className="w-4 h-4" /> {t('step3.audioReady')}
+                <span className="text-xs font-medium text-primary flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full">
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>{t('step3.audioReady')}</span>
                 </span>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete}>
-                  <Trash2 className="w-4 h-4 mr-2" />
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5" onClick={handleDelete}>
+                  <Trash2 className="w-3.5 h-3.5" />
                   {t('step3.rerecord')}
                 </Button>
               </div>
@@ -207,7 +305,7 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
             <audio 
               ref={audioRef} 
               src={voiceBlobUrl} 
-              onEnded={() => setIsPlaying(false)} 
+              preload="metadata"
               className="hidden" 
             />
           </div>

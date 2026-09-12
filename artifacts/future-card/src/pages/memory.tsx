@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { useRoute } from 'wouter';
+import { useRoute, Link } from 'wouter';
 import { useGetPublicCard, getGetPublicCardQueryKey } from '@workspace/api-client-react';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, Music } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -98,6 +98,13 @@ export default function MemoryPublicView() {
                  <span className="text-muted-foreground font-medium uppercase tracking-widest text-sm">
                    {t('memory.listen')}
               </span>
+              <Link
+                href={`/listen/${card.id}`}
+                className="inline-flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary underline-offset-4 hover:underline transition-colors mt-1"
+              >
+                <Music className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'فتح في مشغل الصوت المخصص' : 'Open in Dedicated Audio Player'}</span>
+              </Link>
               <audio ref={audioRef} src={card.voiceMessageUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
             </motion.div>
           )}

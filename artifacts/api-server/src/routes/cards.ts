@@ -3,6 +3,41 @@ import { eq, ilike, or, sql } from "drizzle-orm";
 import { db, cardsTable } from "@workspace/db";
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
+import os from "os";
+
+function getLocalIp(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "localhost";
+}
+
+function resolvePublicDomain(req: Request): string {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/$/, "");
+  }
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  const hostHeader = req.get("x-forwarded-host") || req.get("host") || "";
+  const proto = req.get("x-forwarded-proto") || (req.secure ? "https" : "http");
+
+  if (hostHeader) {
+    const isLocalhost = hostHeader.startsWith("localhost") || hostHeader.startsWith("127.0.0.1");
+    if (isLocalhost) {
+      const port = hostHeader.includes(":") ? hostHeader.split(":")[1] : "8080";
+      return `http://${getLocalIp()}:${port}`;
+    }
+    return `${proto}://${hostHeader}`;
+  }
+
+  return `http://${getLocalIp()}:8080`;
+}
 
 const router = Router();
 
@@ -291,10 +326,8 @@ router.post("/cards/:id/generate", async (req: Request, res: Response) => {
       professionImageMap[profession] ||
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80";
 
-    const domain = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "http://localhost:80";
-    const publicUrl = `${domain}/memory/${c.id}`;
+    const domain = resolvePublicDomain(req);
+    const publicUrl = `${domain}/listen/${c.id}`;
 
     const qrCodeUrl = await QRCode.toDataURL(publicUrl, {
       width: 300,

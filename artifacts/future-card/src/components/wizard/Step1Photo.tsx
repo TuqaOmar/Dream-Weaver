@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UploadCloud, Camera } from 'lucide-react';
+import { UploadCloud, Camera, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -15,13 +15,25 @@ interface Step1PhotoProps {
 }
 
 export function Step1Photo({ photoUrl, childName, onChildNameChange, onPhotoSelected, onNext, isUploading }: Step1PhotoProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [imageMeta, setImageMeta] = useState<{ width: number; height: number; sizeKB: number } | null>(null);
 
   const handleFile = (file?: File) => {
     if (file && file.type.startsWith('image/')) {
+      const img = new Image();
+      const tempUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        setImageMeta({
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          sizeKB: Math.round(file.size / 1024),
+        });
+        URL.revokeObjectURL(tempUrl);
+      };
+      img.src = tempUrl;
       onPhotoSelected(file);
     }
   };
@@ -100,6 +112,33 @@ export function Step1Photo({ photoUrl, childName, onChildNameChange, onPhotoSele
           </div>
         )}
       </div>
+
+      {imageMeta && photoUrl && (
+        <div className="w-full max-w-sm -mt-4">
+          {imageMeta.width < 450 || imageMeta.height < 450 ? (
+            <div className="flex items-start gap-2.5 p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-2xl text-xs text-start">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              <div>
+                <p className="font-semibold mb-0.5">
+                  {language === 'ar' ? 'أبعاد الصورة منخفضة جداً (صورة مصغرة)' : 'Low Resolution Image Detected'}
+                </p>
+                <p className="opacity-90">
+                  {language === 'ar'
+                    ? `أبعاد هذه الصورة (${imageMeta.width}×${imageMeta.height} بكسل). ستظهر مبكسلة عند التكبير والطباعة. للحصول على بطاقة واضحة، يُرجى رفع الصورة الأصلية عالية الدقة.`
+                    : `This image is only ${imageMeta.width}×${imageMeta.height}px. It will appear blurry or pixelated when displayed or printed.`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-muted/40 py-1.5 px-3 rounded-full mx-auto w-fit">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              <span>
+                {language === 'ar' ? 'دقة الصورة ممتازة:' : 'High Resolution:'} {imageMeta.width} × {imageMeta.height} px ({imageMeta.sizeKB} KB)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="w-full max-w-sm space-y-2 text-start">
         <label htmlFor="child-name" className="text-sm font-medium text-foreground">

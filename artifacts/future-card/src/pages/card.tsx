@@ -51,7 +51,7 @@ export default function CardView() {
     window.print();
   };
 
-  const handleDownloadPhoto = () => {
+  const handleDownloadPhoto = async () => {
     if (!memoryImageUrl || !card) return;
     const link = document.createElement('a');
     link.href = memoryImageUrl;
@@ -60,6 +60,14 @@ export default function CardView() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Auto-delete the photo from the server for privacy
+    try {
+      await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
+      refetch(); // Refresh the card data so UI updates
+    } catch (e) {
+      console.error('Failed to delete photo after download:', e);
+    }
   };
 
   const handleDownloadCard = async () => {
@@ -180,6 +188,14 @@ export default function CardView() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Auto-delete the photo from the server for privacy
+      try {
+        await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
+        refetch(); // Refresh the card data so UI updates
+      } catch (e) {
+        console.error('Failed to delete photo after download:', e);
+      }
     } catch (err) {
       console.error('Download card error:', err);
       handleDownloadPhoto();

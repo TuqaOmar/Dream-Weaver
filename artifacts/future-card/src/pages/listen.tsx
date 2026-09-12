@@ -133,15 +133,7 @@ export default function ListenPublicView() {
     <div className="min-h-[100dvh] w-full bg-gradient-to-b from-primary/10 via-background to-background flex flex-col justify-between items-center p-4 sm:p-8 relative overflow-hidden select-none">
       {/* Soft ambient background glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {childPhoto ? (
-          <img
-            src={childPhoto}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-15 blur-[120px] scale-125"
-          />
-        ) : (
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-        )}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
       </div>
 
       {/* Top bar: minimal branding and language switcher */}
@@ -177,26 +169,14 @@ export default function ListenPublicView() {
             <motion.div
               animate={{
                 scale: isPlaying ? [1, 1.04, 1] : 1,
-                rotate: isPlaying ? 360 : 0,
               }}
               transition={{
                 scale: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
-                rotate: { repeat: Infinity, duration: 20, ease: 'linear' },
               }}
               className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-1 bg-gradient-to-tr from-primary via-primary/40 to-accent shadow-xl flex items-center justify-center overflow-hidden"
             >
-              <div className="w-full h-full rounded-full overflow-hidden bg-background">
-                {childPhoto ? (
-                  <img
-                    src={childPhoto}
-                    alt={card.childName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
-                    <Heart className="w-12 h-12" />
-                  </div>
-                )}
+              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center">
+                <Volume2 className={cn("w-16 h-16 text-primary", isPlaying && "animate-pulse")} />
               </div>
             </motion.div>
 

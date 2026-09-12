@@ -278,6 +278,46 @@ router.delete("/cards/:id", async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/cards/:id/photo
+router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
+  try {
+    const existing = await db
+      .select()
+      .from(cardsTable)
+      .where(eq(cardsTable.id, String(req.params.id)))
+      .limit(1);
+
+    if (!existing.length) {
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
+
+    const card = existing[0];
+    
+    // If we want to delete the file from disk:
+    if (card.childPhotoUrl && card.childPhotoUrl.startsWith("/api/uploads/")) {
+      const filename = card.childPhotoUrl.replace("/api/uploads/", "");
+      const fs = require("fs");
+      const path = require("path");
+      const filePath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    const [updated] = await db
+      .update(cardsTable)
+      .set({ childPhotoUrl: null, aiImageUrl: null, updatedAt: new Date() })
+      .where(eq(cardsTable.id, String(req.params.id)))
+      .returning();
+
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete card photo");
+    res.status(500).json({ error: "Failed to delete card photo" });
+  }
+});
+
 // POST /api/cards/:id/generate
 router.post("/cards/:id/generate", async (req: Request, res: Response) => {
   try {

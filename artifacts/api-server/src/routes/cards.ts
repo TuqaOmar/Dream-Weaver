@@ -1,8 +1,7 @@
 import { Router } from "express";
 type Request = any;
 type Response = any;
-import { eq, ilike, or, sql } from "drizzle-orm";
-import { db, cardsTable } from "@workspace/db";
+import { db, cardsTable, eq, ilike, or, sql } from "@workspace/db";
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import os from "os";

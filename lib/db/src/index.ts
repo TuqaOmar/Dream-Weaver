@@ -84,3 +84,4 @@ export const pool = instance.pool;
 export const db = instance.db;
 
 export * from "./schema";
+export * from "drizzle-orm";

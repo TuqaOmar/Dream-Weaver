@@ -184,9 +184,9 @@ router.post("/cards", async (req: Request, res: Response) => {
       .returning();
 
     res.status(201).json(card);
-  } catch (err) {
-    req.log.error({ err }, "Failed to create card");
-    res.status(500).json({ error: "Failed to create card" });
+  } catch (err: any) {
+    console.error("Failed to create card", err);
+    res.status(500).json({ error: "Failed to create card", details: err?.message || String(err) });
   }
 });
 

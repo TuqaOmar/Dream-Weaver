@@ -1,10 +1,15 @@
-import express, { type Request, type Response } from "express";
+import path from "path";
+import fs from "fs";
+import express from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import * as pinoHttpPkg from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
 const app = express();
+
+// pino-http may be default or named export depending on the env
+const pinoHttp = (pinoHttpPkg as any).default ?? pinoHttpPkg;
 
 app.use(
   pinoHttp({
@@ -18,19 +23,15 @@ app.use(
         };
       },
       res(res: any) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
 );
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-import path from "path";
-import fs from "fs";
 
 app.use("/api", router);
 
@@ -41,12 +42,13 @@ const frontendDistCandidates = [
 ];
 const distPath = frontendDistCandidates.find((dir) => fs.existsSync(dir));
 
-import type { NextFunction } from "express";
-
 if (distPath) {
   app.use(express.static(distPath));
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if ((req.method === "GET" || req.method === "HEAD") && !req.path.startsWith("/api")) {
+  app.use((req: any, res: any, next: any) => {
+    if (
+      (req.method === "GET" || req.method === "HEAD") &&
+      !String(req.path ?? req.url ?? "").startsWith("/api")
+    ) {
       return res.sendFile(path.join(distPath, "index.html"));
     }
     next();

@@ -12,11 +12,11 @@ async function getApp() {
   if (initError) return null;
 
   try {
-    const mod = await import('../artifacts/api-server/src/app.js');
+    const mod = await import('../artifacts/api-server/dist/index.mjs');
     handler = mod.default ?? mod;
     return handler;
   } catch (err: any) {
-    initError = err?.message || String(err);
+    initError = err?.stack || err?.message || String(err);
     console.error('App init failed:', initError);
     return null;
   }

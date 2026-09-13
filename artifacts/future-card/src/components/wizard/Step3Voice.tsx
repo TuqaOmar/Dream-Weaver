@@ -38,11 +38,16 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
     }
     return () => {
       if (interval) window.clearInterval(interval);
+    };
+  }, [isRecording]);
+
+  useEffect(() => {
+    return () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
     };
-  }, [isRecording]);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -80,29 +85,48 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : '';
-
-      const options = mimeType ? { mimeType } : undefined;
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
+      let mediaRecorder: MediaRecorder;
+      let actualMimeType = '';
+
+      const supportedTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg',
+        'audio/wav'
+      ];
+
+      for (const type of supportedTypes) {
+        if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)) {
+          actualMimeType = type;
+          break;
+        }
+      }
+
+      try {
+        mediaRecorder = actualMimeType ? new MediaRecorder(stream, { mimeType: actualMimeType }) : new MediaRecorder(stream);
+      } catch (_err) {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
+      mediaRecorderRef.current = mediaRecorder;
+
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
       };
 
       mediaRecorder.onstop = () => {
-        const actualType = mediaRecorder.mimeType || mimeType || 'audio/webm';
-        const ext = actualType.includes('mp4') ? 'mp4' : actualType.includes('ogg') ? 'ogg' : 'webm';
-        const blob = new Blob(chunksRef.current, { type: actualType });
+        const finalType = mediaRecorder.mimeType || actualMimeType || 'audio/webm';
+        const ext = finalType.includes('mp4') ? 'mp4' : finalType.includes('ogg') ? 'ogg' : finalType.includes('wav') ? 'wav' : 'webm';
+        const blob = new Blob(chunksRef.current, { type: finalType });
         const url = URL.createObjectURL(blob);
-        const file = new File([blob], `voice-message.${ext}`, { type: actualType });
+        const file = new File([blob], `voice-message.${ext}`, { type: finalType });
+
         setPlaybackTime(0);
         setAudioDuration(0);
         setIsPlaying(false);
@@ -110,20 +134,23 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(250);
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing microphone", err);
-      alert(t('error.microphone'));
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        alert("يرجى إعطاء الإذن لاستخدام الميكروفون من إعدادات المتصفح للتسجيل.");
+      } else {
+        alert(t('error.microphone'));
+      }
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (timerRef.current) window.clearInterval(timerRef.current);
     }
+    setIsRecording(false);
   };
 
   const togglePlayback = () => {

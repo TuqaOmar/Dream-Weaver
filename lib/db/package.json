@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./schema": "./src/schema/index.js"
+    ".": "./dist/index.js",
+    "./schema": "./dist/schema/index.js"
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",

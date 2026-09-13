@@ -3,6 +3,12 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": "artifacts/future-card/dist/public",
   "cleanUrls": true,
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "lib/**,artifacts/api-server/**",
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

@@ -27,7 +27,7 @@ export function Step4Magic({ isCreating, onComplete }: Step4MagicProps) {
   useEffect(() => {
     if (!isCreating) {
       setActiveStep(steps.length);
-      const timer = setTimeout(onComplete, 1000);
+      const timer = setTimeout(onComplete, 300);
       return () => clearTimeout(timer);
     }
 
@@ -37,7 +37,7 @@ export function Step4Magic({ isCreating, onComplete }: Step4MagicProps) {
       if (current < steps.length) {
         setActiveStep(current);
       }
-    }, 2000); // Progress every 2 seconds
+    }, 300); // Fast 300ms progress per step
 
     return () => clearInterval(interval);
   }, [isCreating, steps.length, onComplete]);

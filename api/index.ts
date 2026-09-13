@@ -1,21 +1,4 @@
-let app: any;
-
-try {
-  // Dynamic import to catch any initialization errors
-  const mod = require('../artifacts/api-server/src/app');
-  app = mod.default ?? mod;
-} catch (err: any) {
-  // If the app fails to initialize, return a useful error
-  const express = require('express');
-  app = express();
-  app.use((_req: any, res: any) => {
-    res.status(500).json({
-      error: 'Server initialization failed',
-      details: err?.message || String(err),
-      hint: 'Check that DATABASE_URL is set in Vercel Environment Variables',
-    });
-  });
-}
+import type { Request, Response } from 'express';
 
 export const config = {
   api: {
@@ -23,4 +6,33 @@ export const config = {
   },
 };
 
-export default app;
+let handler: any = null;
+let initError: string | null = null;
+
+async function getApp() {
+  if (handler) return handler;
+  if (initError) return null;
+
+  try {
+    const mod = await import('../artifacts/api-server/src/app.js');
+    handler = mod.default ?? mod;
+    return handler;
+  } catch (err: any) {
+    initError = err?.message || String(err);
+    console.error('App init failed:', initError);
+    return null;
+  }
+}
+
+export default async function (req: Request, res: Response) {
+  const app = await getApp();
+  if (!app) {
+    res.status(500).json({
+      error: 'Server initialization failed',
+      details: initError,
+      hint: 'Check that DATABASE_URL is set in Vercel Environment Variables',
+    });
+    return;
+  }
+  return app(req, res);
+}

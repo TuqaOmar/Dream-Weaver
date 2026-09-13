@@ -59,10 +59,18 @@ export function MemoryFrame({
 
       <div className="relative z-[1] h-full w-full overflow-hidden rounded-[1.75rem] border-[3px] border-white/95 bg-[#fffdf8] p-[3px] shadow-inner">
         <div className="relative h-full w-full overflow-hidden rounded-[1.55rem] border border-white/90 bg-[#efe3d7]">
+          {/* Instagram Reels / TikTok Style Blurred Reflection Backdrop */}
+          <img
+            src={src}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover blur-2xl scale-125 opacity-70"
+          />
+          {/* Main Uncropped Photo */}
           <img
             src={src}
             alt={alt}
-            className="h-full w-full object-cover"
+            className="relative h-full w-full object-contain z-10 drop-shadow-md"
             data-testid="img-memory-original"
           />
         </div>

@@ -29,9 +29,16 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let interval: number | null = null;
+    if (isRecording) {
+      setDuration(0);
+      interval = window.setInterval(() => {
+        setDuration((d) => d + 1);
+      }, 1000);
+    }
     return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      if (isRecording && mediaRecorderRef.current) {
+      if (interval) window.clearInterval(interval);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
     };
@@ -105,11 +112,6 @@ export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBa
 
       mediaRecorder.start();
       setIsRecording(true);
-      setDuration(0);
-      
-      timerRef.current = window.setInterval(() => {
-        setDuration(d => d + 1);
-      }, 1000);
     } catch (err) {
       console.error("Error accessing microphone", err);
       alert(t('error.microphone'));

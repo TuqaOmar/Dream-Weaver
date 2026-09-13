@@ -96,15 +96,11 @@ export default function Create() {
     if (step === 1 && !childName.trim()) return;
     
     if (step === 2) {
+      setStep(3);
       const id = await handleFinalSubmit();
       if (id) {
         setCreatedCardId(id);
-        setStep(3);
 
-        // Keep the magic screen visible while the server preserves the
-        // original photo and creates the QR code. Previously this ran in the
-        // background and isCreating never became false, so the wizard
-        // stayed forever on "Creating QR Code".
         try {
           await generateImage.mutateAsync({ id });
           setIsCreating(false);
@@ -117,6 +113,8 @@ export default function Create() {
             variant: "destructive"
           });
         }
+      } else {
+        setStep(2);
       }
     } else {
       setStep(s => s + 1);

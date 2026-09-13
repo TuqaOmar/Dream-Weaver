@@ -190,6 +190,27 @@ router.post("/cards", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/cards/:id/public — Used by QR code scanner public view
+router.get("/cards/:id/public", async (req: Request, res: Response) => {
+  try {
+    const card = await db
+      .select()
+      .from(cardsTable)
+      .where(eq(cardsTable.id, String(req.params.id)))
+      .limit(1);
+
+    if (!card.length) {
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
+
+    res.json(card[0]);
+  } catch (err) {
+    req.log.error({ err }, "Failed to get public card");
+    res.status(500).json({ error: "Failed to get public card" });
+  }
+});
+
 // GET /api/cards/:id
 router.get("/cards/:id", async (req: Request, res: Response) => {
   try {

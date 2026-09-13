@@ -175,8 +175,15 @@ export default function ListenPublicView() {
               }}
               className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-1 bg-gradient-to-tr from-primary via-primary/40 to-accent shadow-xl flex items-center justify-center overflow-hidden"
             >
-              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center">
-                <Volume2 className={cn("w-16 h-16 text-primary", isPlaying && "animate-pulse")} />
+              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center relative">
+                {childPhoto ? (
+                  <>
+                    <img src={childPhoto} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-70" />
+                    <img src={childPhoto} alt={card.childName} className="relative z-10 w-full h-full object-contain" />
+                  </>
+                ) : (
+                  <Volume2 className={cn("w-16 h-16 text-primary", isPlaying && "animate-pulse")} />
+                )}
               </div>
             </motion.div>
 

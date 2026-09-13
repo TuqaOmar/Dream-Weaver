@@ -12,7 +12,7 @@ async function getApp() {
   if (initError) return null;
 
   try {
-    const mod = await import('../artifacts/api-server/dist/index.mjs');
+    const mod = await import('../artifacts/api-server/src/app.js');
     handler = mod.default ?? mod;
     return handler;
   } catch (err: any) {

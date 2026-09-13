@@ -72,7 +72,8 @@ router.use((err: any, _req: any, res: any, _next: any) => {
     res.status(400).json({ error: err.message });
     return;
   }
-  res.status(500).json({ error: "Upload failed" });
+  console.error("Upload error:", err);
+  res.status(500).json({ error: "Upload failed", details: err?.message || String(err) });
 });
 
 export default router;

@@ -38,28 +38,72 @@ export default function Create() {
     setPhotoUrl(URL.createObjectURL(file));
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
+      if (!file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+
+      img.onerror = (err) => {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      };
+
+      img.src = objectUrl;
     });
   };
 
   const handleFinalSubmit = async () => {
     setIsCreating(true);
     try {
-      // 1. Process photo
+      // 1. Process and compress photo
       let uploadedPhotoUrl = null;
       if (photoFile) {
-        uploadedPhotoUrl = await fileToBase64(photoFile);
+        uploadedPhotoUrl = await compressImage(photoFile);
       }
 
       // 2. Process voice if exists
       let uploadedVoiceUrl = null;
       if (voiceFile) {
-        uploadedVoiceUrl = await fileToBase64(voiceFile);
+        uploadedVoiceUrl = await compressImage(voiceFile);
       }
 
       // 3. Create Card record

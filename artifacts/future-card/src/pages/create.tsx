@@ -38,34 +38,28 @@ export default function Create() {
     setPhotoUrl(URL.createObjectURL(file));
   };
 
-  const uploadFile = async (file: File, type: 'photo' | 'voice') => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const endpoint = type === 'photo' ? '/api/upload/photo' : '/api/upload/voice';
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      body: formData,
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
     });
-    
-    if (!res.ok) throw new Error('Upload failed');
-    const data = await res.json();
-    return data.url;
   };
 
   const handleFinalSubmit = async () => {
     setIsCreating(true);
     try {
-      // 1. Upload photo
+      // 1. Process photo
       let uploadedPhotoUrl = null;
       if (photoFile) {
-        uploadedPhotoUrl = await uploadFile(photoFile, 'photo');
+        uploadedPhotoUrl = await fileToBase64(photoFile);
       }
 
-      // 2. Upload voice if exists
+      // 2. Process voice if exists
       let uploadedVoiceUrl = null;
       if (voiceFile) {
-        uploadedVoiceUrl = await uploadFile(voiceFile, 'voice');
+        uploadedVoiceUrl = await fileToBase64(voiceFile);
       }
 
       // 3. Create Card record

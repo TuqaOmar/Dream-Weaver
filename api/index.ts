@@ -1,5 +1,3 @@
-import type { Request, Response } from 'express';
-
 export const config = {
   api: {
     bodyParser: false,
@@ -24,7 +22,7 @@ async function getApp() {
   }
 }
 
-export default async function (req: Request, res: Response) {
+export default async function (req: any, res: any) {
   const app = await getApp();
   if (!app) {
     res.status(500).json({

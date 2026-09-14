@@ -38,7 +38,7 @@ export default function Create() {
     setPhotoUrl(URL.createObjectURL(file));
   };
 
-  const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 900, maxHeight = 900, quality = 0.75): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (!file.type.startsWith('image/')) {
         const reader = new FileReader();

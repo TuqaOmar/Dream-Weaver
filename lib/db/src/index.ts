@@ -15,12 +15,12 @@ function createDb() {
     );
   }
 
-  // Use Neon serverless driver for Vercel (or any serverless env)
-  // Use node-postgres for local development
+  // Use Neon serverless driver only when host is neon.tech
+  const isNeon = dbUrl.includes("neon.tech");
   const isServerless =
-    !!process.env.VERCEL ||
+    (!!process.env.VERCEL ||
     !!process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    !!process.env.NETLIFY;
+    !!process.env.NETLIFY) && isNeon;
 
   if (isServerless) {
     const client = neon(dbUrl);
@@ -28,7 +28,11 @@ function createDb() {
     return { pool: null, db };
   }
 
-  const pool = new Pool({ connectionString: dbUrl });
+  const ssl = dbUrl.includes("supabase") || dbUrl.includes("sslmode=require") || dbUrl.includes("pooler.supabase.com")
+    ? { rejectUnauthorized: false }
+    : undefined;
+
+  const pool = new Pool({ connectionString: dbUrl, ssl });
   const db = drizzleNode(pool, { schema });
   return { pool, db };
 }

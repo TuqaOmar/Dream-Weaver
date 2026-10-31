@@ -59,9 +59,10 @@ function makeWav(file, seconds = 2) {
   fs.writeFileSync(file, buf);
 }
 
-const PHOTO = path.join(OUT, 'fixture-photo.png');
+const REAL_PHOTO = path.resolve('fixtures/photo.jpg');
+const PHOTO = fs.existsSync(REAL_PHOTO) ? REAL_PHOTO : path.join(OUT, 'fixture-photo.png');
 const AUDIO = path.join(OUT, 'fixture-voice.wav');
-makePhoto(PHOTO);
+if (PHOTO !== REAL_PHOTO) makePhoto(PHOTO);
 makeWav(AUDIO);
 
 function decodeQrFromPng(buffer) {

@@ -74,7 +74,7 @@ export function AudioPlayer({ src, className, tone = 'light' }: { src: string; c
           dark ? 'bg-[#f4e6cf] text-[#1c2333]' : 'bg-primary text-primary-foreground hover:bg-primary/90',
         )}
       >
-        {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className={cn('h-6 w-6 fill-current', isRTL ? 'rotate-180' : 'ms-0.5')} />}
+        {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className={'ms-0.5 h-6 w-6 fill-current'} />}
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex h-10 cursor-pointer items-center gap-[3px]" onClick={seek} role="slider" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} tabIndex={0}>

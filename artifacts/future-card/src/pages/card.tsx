@@ -212,7 +212,7 @@ export default function CardView() {
           </motion.div>
 
           {/* Side panel */}
-          <div className="space-y-5 print:hidden">
+          <div className="min-w-0 space-y-5 print:hidden">
             <div>
               <span className="eyebrow">{t('card.ready')}</span>
               <h1 className="mt-2 font-serif text-4xl font-semibold" data-testid="card-title">{card.childName}</h1>

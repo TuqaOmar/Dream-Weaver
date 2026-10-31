@@ -232,11 +232,18 @@ export async function renderCardToCanvas(opts: RenderOptions): Promise<HTMLCanva
   ctx.clip();
   ctx.fillStyle = '#efe6dc';
   ctx.fillRect(photo.x, photo.y, photo.w, photo.h);
+  // Cheap, universally supported blur: downscale to a tiny canvas, then scale back up.
   const cover = Math.max(photo.w / iw, photo.h / ih) * 1.15;
-  ctx.filter = 'blur(28px)';
-  ctx.globalAlpha = 0.75;
-  ctx.drawImage(img, photo.x + (photo.w - iw * cover) / 2, photo.y + (photo.h - ih * cover) / 2, iw * cover, ih * cover);
-  ctx.filter = 'none';
+  const tiny = document.createElement('canvas');
+  tiny.width = 24;
+  tiny.height = 36;
+  const tctx = tiny.getContext('2d');
+  if (tctx) {
+    tctx.drawImage(img, 0, 0, iw, ih, (24 - (iw * cover * 24) / photo.w) / 2, (36 - (ih * cover * 36) / photo.h) / 2, (iw * cover * 24) / photo.w, (ih * cover * 36) / photo.h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(tiny, photo.x, photo.y, photo.w, photo.h);
+  }
   ctx.globalAlpha = 1;
   const contain = Math.min(photo.w / iw, photo.h / ih);
   ctx.drawImage(img, photo.x + (photo.w - iw * contain) / 2, photo.y + (photo.h - ih * contain) / 2, iw * contain, ih * contain);

@@ -1,334 +1,123 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useRoute } from 'wouter';
-import { useGetPublicCard, getGetPublicCardQueryKey } from '@workspace/api-client-react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Heart, Globe, Quote } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { HardDrive, VolumeX, Loader2, ExternalLink } from 'lucide-react';
+import { useGetPublicCard, getGetPublicCardQueryKey } from '@workspace/api-client-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { AudioPlayer } from '@/components/VoicePlayer';
+import { BrandMark } from '@/components/Navigation';
+import { normalizeDriveLink } from '@/lib/drive';
 
+/**
+ * Public page reached by scanning a QR code (older cards, or cards whose
+ * voice is stored on the site). If the voice lives on Google Drive we send
+ * the visitor straight there.
+ */
 export default function ListenPublicView() {
   const [, params] = useRoute('/listen/:id');
   const id = params?.id;
-  const { t, language, setLanguage, isRTL } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
 
-  const { data: card, isLoading } = useGetPublicCard(id!, {
-    query: { enabled: !!id, queryKey: getGetPublicCardQueryKey(id!) },
+  const { data: card, isLoading, isError } = useGetPublicCard(id!, {
+    query: { enabled: !!id, queryKey: getGetPublicCardQueryKey(id!), retry: 1 },
   });
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (card?.language === 'en' || card?.language === 'ar') setLanguage(card.language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card?.language]);
+
+  const driveUrl = normalizeDriveLink(card?.voiceMessageUrl);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        setDuration(audio.duration);
-      }
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    };
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('durationchange', updateDuration);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('durationchange', updateDuration);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [card?.voiceMessageUrl]);
-
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio || !card?.voiceMessageUrl) return;
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch((err) => console.error('Audio play error:', err));
+    if (driveUrl) {
+      const timer = setTimeout(() => window.location.replace(driveUrl), 900);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [driveUrl]);
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const newTime = Number(e.target.value);
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
-
-  const restartAudio = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    setCurrentTime(0);
-    audio.play().then(() => setIsPlaying(true));
-  };
-
-  const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.muted = !isMuted;
-    setIsMuted(!isMuted);
-  };
-
-  const formatTime = (secs: number) => {
-    if (isNaN(secs) || !isFinite(secs)) return '0:00';
-    const mins = Math.floor(secs / 60);
-    const remainingSecs = Math.floor(secs % 60);
-    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-primary/5 via-background to-background p-6">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <Heart className="w-6 h-6 text-primary absolute inset-0 m-auto animate-pulse" />
-        </div>
-        <p className="mt-4 text-muted-foreground font-serif text-sm animate-pulse">
-          {language === 'ar' ? 'جاري تحميل الرسالة الصوتية...' : 'Loading voice message...'}
-        </p>
+  const shell = (children: ReactNode) => (
+    <div className="relative flex min-h-[100dvh] flex-col items-center bg-[#151b2e] px-5 py-6 text-white">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-[#c9855c]/25 blur-[120px]" />
       </div>
-    );
-  }
-
-  if (!card) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-background">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-          <VolumeX className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-serif text-foreground font-bold mb-2">
-          {t('common.memoryNotFound')}
-        </h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          {language === 'ar'
-            ? 'تأكد من صحة الرابط أو رمز الاستجابة السريعة (QR Code).'
-            : 'Please verify the link or scanned QR code.'}
-        </p>
-      </div>
-    );
-  }
-
-  const childPhoto = card.childPhotoUrl || card.aiImageUrl;
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-b from-primary/10 via-background to-background flex flex-col justify-between items-center p-4 sm:p-8 relative overflow-hidden select-none">
-      {/* Soft ambient background glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-      </div>
-
-      {/* Top bar: minimal branding and language switcher */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between z-10 pt-2 pb-4">
+      <header className="relative z-10 flex w-full max-w-md items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold font-serif shadow-sm">
-            {t('memory.brand').charAt(0)}
-          </div>
-          <span className="font-serif font-bold text-sm tracking-wide text-foreground/80">
-            {t('memory.brand')}
-          </span>
+          <BrandMark className="h-7 w-7" />
+          <span className="font-serif text-sm font-semibold text-white/85">{t('memory.brand')}</span>
         </div>
-
         <button
-          onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-background/80 hover:bg-background border border-border/60 shadow-sm backdrop-blur transition-all active:scale-95 text-foreground/80"
+          type="button"
+          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+          className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-white/75 hover:bg-white/10"
         >
-          <Globe className="w-3.5 h-3.5" />
-          <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+          {language === 'ar' ? 'EN' : 'ع'}
         </button>
       </header>
-
-      {/* Main player container */}
-      <main className="w-full max-w-md mx-auto flex-1 flex flex-col items-center justify-center z-10 py-6">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full bg-card/80 backdrop-blur-2xl border border-border/60 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-primary/5 flex flex-col items-center space-y-6"
-        >
-          {/* Circular avatar with glowing effect */}
-          <div className="relative group">
-            <motion.div
-              animate={{
-                scale: isPlaying ? [1, 1.04, 1] : 1,
-              }}
-              transition={{
-                scale: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
-              }}
-              className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-1 bg-gradient-to-tr from-primary via-primary/40 to-accent shadow-xl flex items-center justify-center overflow-hidden"
-            >
-              <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center relative">
-                {childPhoto ? (
-                  <>
-                    <img src={childPhoto} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-70" />
-                    <img src={childPhoto} alt={card.childName} className="relative z-10 w-full h-full object-contain" />
-                  </>
-                ) : (
-                  <Volume2 className={cn("w-16 h-16 text-primary", isPlaying && "animate-pulse")} />
-                )}
-              </div>
-            </motion.div>
-
-            {/* Floating badge */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
-              <Sparkles className="w-3 h-3" />
-              <span>{card.customProfession || card.profession || t('hero.badge')}</span>
-            </div>
-          </div>
-
-          {/* Child title & greeting */}
-          <div className="text-center space-y-1 pt-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-              {language === 'ar' ? 'رسالة صوتية خاصة' : 'Special Voice Message'}
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
-              {card.childName}
-            </h1>
-          </div>
-
-          {/* Hidden HTML5 Audio Element */}
-          {card.voiceMessageUrl && (
-            <audio
-              ref={audioRef}
-              src={card.voiceMessageUrl}
-              preload="metadata"
-              className="hidden"
-            />
-          )}
-
-          {/* Waveform Visualization Bars */}
-          <div className="w-full flex items-center justify-center gap-1 sm:gap-1.5 h-12 px-2">
-            {Array.from({ length: 28 }).map((_, i) => {
-              const activeIndex = Math.floor((progressPercent / 100) * 28);
-              const isPast = i <= activeIndex;
-              return (
-                <motion.div
-                  key={i}
-                  animate={{
-                    height: isPlaying
-                      ? `${Math.max(12, Math.sin(i * 0.5 + currentTime * 5) * 36 + 18)}px`
-                      : isPast
-                        ? '16px'
-                        : '8px',
-                  }}
-                  transition={{ duration: 0.15 }}
-                  className={cn(
-                    'w-1.5 rounded-full transition-colors',
-                    isPast
-                      ? 'bg-primary'
-                      : 'bg-primary/20 dark:bg-primary/30'
-                  )}
-                />
-              );
-            })}
-          </div>
-
-          {/* Progress Slider & Times */}
-          <div className="w-full space-y-2">
-            <div className="relative flex items-center">
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                step="0.1"
-                value={currentTime}
-                onChange={handleSeek}
-                disabled={!card.voiceMessageUrl}
-                className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary transition-all focus:outline-none"
-              />
-            </div>
-            <div className="flex justify-between text-xs font-mono text-muted-foreground px-0.5">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* Audio Controls */}
-          {card.voiceMessageUrl ? (
-            <div className="flex items-center justify-center gap-6 pt-2">
-              <button
-                onClick={restartAudio}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-90"
-                title={language === 'ar' ? 'إعادة من البداية' : 'Restart'}
-              >
-                <RotateCcw className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={togglePlay}
-                className={cn(
-                  'w-18 h-18 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-primary-foreground shadow-2xl transition-all duration-300 active:scale-95',
-                  isPlaying
-                    ? 'bg-primary scale-105 shadow-primary/40'
-                    : 'bg-primary hover:scale-105 hover:bg-primary/90 shadow-primary/25'
-                )}
-              >
-                {isPlaying ? (
-                  <Pause className="w-8 h-8 fill-current" />
-                ) : (
-                  <Play className={cn('w-8 h-8 fill-current', isRTL ? 'mr-1' : 'ml-1')} />
-                )}
-              </button>
-
-              <button
-                onClick={toggleMute}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-90"
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? (
-                  <VolumeX className="w-5 h-5 text-destructive" />
-                ) : (
-                  <Volume2 className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          ) : (
-            <div className="py-4 text-center text-sm text-muted-foreground">
-              {language === 'ar'
-                ? 'لا يوجد تسجيل صوتي محفوظ لهذه البطاقة.'
-                : 'No voice recording found for this card.'}
-            </div>
-          )}
-
-          {/* Parent written message if available */}
-          {card.parentMessage && (
-            <div className="w-full pt-4 border-t border-border/50">
-              <div className="relative bg-muted/40 dark:bg-muted/20 rounded-2xl p-4 text-center">
-                <Quote className="w-4 h-4 text-primary/40 mb-1 mx-auto" />
-                <p className="font-serif italic text-sm text-foreground/90 leading-relaxed">
-                  "{card.parentMessage}"
-                </p>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      </main>
-
-      {/* Footer */}
-      <footer className="w-full max-w-md mx-auto text-center z-10 py-3 text-xs text-muted-foreground/70">
-        <p>
-          {language === 'ar' ? 'سُجِّلت بكل حب في' : 'Recorded with love on'}{' '}
-          {new Date(card.createdAt).toLocaleDateString(language === 'ar' ? 'ar-JO' : 'en-US')}
-        </p>
-      </footer>
+      <main className="relative z-10 flex w-full max-w-md flex-1 flex-col items-center justify-center py-10">{children}</main>
     </div>
+  );
+
+  if (isLoading) {
+    return shell(<Loader2 className="h-8 w-8 animate-spin text-white/70" />);
+  }
+
+  if (!card || isError) {
+    return shell(
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+          <VolumeX className="h-6 w-6 text-white/70" />
+        </div>
+        <h1 className="mb-2 font-serif text-xl font-semibold">{t('common.memoryNotFound')}</h1>
+        <p className="text-sm text-white/60">{t('listen.notFoundBody')}</p>
+      </div>,
+    );
+  }
+
+  const photo = card.childPhotoUrl || card.aiImageUrl;
+
+  return shell(
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full text-center">
+      <div className="mx-auto mb-6 h-36 w-36 overflow-hidden rounded-full p-1 shadow-2xl" style={{ background: 'linear-gradient(135deg,#ef5fa7,#ffd04a,#5fd3a5,#3fc6dc)' }}>
+        <div className="relative h-full w-full overflow-hidden rounded-full bg-[#efe6dc]">
+          {photo && (
+            <>
+              <img src={photo} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-xl" />
+              <img src={photo} alt={card.childName} className="relative h-full w-full object-contain" />
+            </>
+          )}
+        </div>
+      </div>
+      <p className="eyebrow !text-[#e7b48f]">{t('listen.eyebrow')}</p>
+      <h1 className="mt-2 font-serif text-3xl font-semibold" data-testid="listen-name">{card.childName}</h1>
+
+      <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.06] p-5 text-start backdrop-blur">
+        {driveUrl ? (
+          <div className="space-y-4 text-center" data-testid="listen-drive-redirect">
+            <div className="flex items-center justify-center gap-2 text-sm text-white/80">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t('listen.openingDrive')}
+            </div>
+            <a href={driveUrl} className="inline-flex items-center gap-2 rounded-full bg-[#f4e6cf] px-5 py-2.5 text-sm font-semibold text-[#1c2333]">
+              <HardDrive className="h-4 w-4" />
+              {t('player.openDrive')}
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        ) : card.voiceMessageUrl ? (
+          <AudioPlayer src={card.voiceMessageUrl} tone="dark" />
+        ) : (
+          <p className="py-2 text-center text-sm text-white/60">{t('listen.noVoice')}</p>
+        )}
+      </div>
+
+      {card.parentMessage && (
+        <blockquote className="mt-6 font-serif text-lg italic leading-relaxed text-white/80">“{card.parentMessage}”</blockquote>
+      )}
+
+      <p className="mt-10 text-xs text-white/40">
+        {t('listen.recordedOn')} {new Date(card.createdAt).toLocaleDateString(language === 'ar' ? 'ar-JO' : 'en-GB')}
+      </p>
+    </motion.div>,
   );
 }

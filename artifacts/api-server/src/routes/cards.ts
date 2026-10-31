@@ -5,6 +5,24 @@ import { db, cardsTable, eq, ilike, or, sql } from "../../../../lib/db/src/index
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import os from "os";
+import { normalizeDriveLink, parseDriveLink } from "../lib/drive.js";
+
+/** Accept data URLs, Google Drive links (normalised) and other http(s) links. */
+function sanitizeVoiceUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const v = value.trim();
+  if (v.startsWith("data:audio/") || v.startsWith("data:video/")) return v;
+  const drive = normalizeDriveLink(v);
+  if (drive) return drive;
+  if (/^https?:\/\//i.test(v)) return v.slice(0, 2000);
+  return null;
+}
+
+/** Where the printed QR code should take people. */
+export function qrTargetFor(card: { id: string; voiceMessageUrl: string | null }, domain: string): string {
+  if (parseDriveLink(card.voiceMessageUrl)) return normalizeDriveLink(card.voiceMessageUrl)!;
+  return `${domain}/listen/${card.id}`;
+}
 
 function getLocalIp(): string {
   const interfaces = os.networkInterfaces();
@@ -21,6 +39,12 @@ function getLocalIp(): string {
 function resolvePublicDomain(req: Request): string {
   if (process.env.APP_URL) {
     return process.env.APP_URL.replace(/\/$/, "");
+  }
+  // Vercel: always prefer the stable production domain. Per-deployment URLs
+  // (dream-weaver-abc123-team.vercel.app) are protected by Vercel
+  // Authentication, so a QR code pointing at them shows a login/error page.
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
@@ -174,7 +198,7 @@ router.post("/cards", async (req: Request, res: Response) => {
         profession: String(profession).slice(0, 100),
         customProfession: customProfession ? String(customProfession).slice(0, 100) : null,
         childPhotoUrl: childPhotoUrl ? String(childPhotoUrl) : null,
-        voiceMessageUrl: voiceMessageUrl ? String(voiceMessageUrl) : null,
+        voiceMessageUrl: sanitizeVoiceUrl(voiceMessageUrl),
         parentMessage: parentMessage ? String(parentMessage).slice(0, 2000) : null,
         status: "draft",
         language: safeLanguage,
@@ -255,7 +279,8 @@ router.patch("/cards/:id", async (req: Request, res: Response) => {
     if (body.customProfession === null) updates.customProfession = null;
     if (typeof body.childPhotoUrl === "string") updates.childPhotoUrl = body.childPhotoUrl;
     if (typeof body.aiImageUrl === "string") updates.aiImageUrl = body.aiImageUrl;
-    if (typeof body.voiceMessageUrl === "string") updates.voiceMessageUrl = body.voiceMessageUrl;
+    if (typeof body.voiceMessageUrl === "string") updates.voiceMessageUrl = sanitizeVoiceUrl(body.voiceMessageUrl);
+    if (body.voiceMessageUrl === null) updates.voiceMessageUrl = null;
     if (typeof body.parentMessage === "string") updates.parentMessage = body.parentMessage.slice(0, 2000);
     if (typeof body.qrCodeUrl === "string") updates.qrCodeUrl = body.qrCodeUrl;
     if (body.status === "draft" || body.status === "generating" || body.status === "completed") {
@@ -378,12 +403,13 @@ router.post("/cards/:id/generate", async (req: Request, res: Response) => {
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80";
 
     const domain = resolvePublicDomain(req);
-    const publicUrl = `${domain}/listen/${c.id}`;
+    const qrTarget = qrTargetFor(c, domain);
 
-    const qrCodeUrl = await QRCode.toDataURL(publicUrl, {
-      width: 300,
+    const qrCodeUrl = await QRCode.toDataURL(qrTarget, {
+      width: 640,
       margin: 1,
-      color: { dark: "#1a1a2e", light: "#FFFFFF" },
+      errorCorrectionLevel: "M",
+      color: { dark: "#1c2333", light: "#FFFFFF" },
     });
 
     const [updated] = await db

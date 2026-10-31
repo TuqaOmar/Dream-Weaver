@@ -52,3 +52,7 @@ Thumbs.db
 .env.*
 !.env.example
 
+
+# E2E
+e2e/artifacts/
+e2e/package-lock.json

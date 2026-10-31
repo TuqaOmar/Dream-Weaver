@@ -1,10 +1,84 @@
 name: CI
+
 on:
   push:
-    branches: [redesign-drive-qr]
+    branches: [main, redesign-drive-qr]
+  pull_request:
   workflow_dispatch:
+
 jobs:
-  probe:
+  build-and-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: futurecard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/futurecard
+      NODE_ENV: production
     steps:
-      - run: echo ok
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck + build (same command Vercel runs)
+        run: pnpm run build
+
+      - name: Create database schema
+        run: pnpm --filter @workspace/db run push-force
+
+      - name: Start mock Google + two app servers
+        run: |
+          node e2e/mock-google.mjs > mock.log 2>&1 &
+          # 8080: Google Drive configured (pointed at the mock)
+          PORT=8080 \
+          GOOGLE_CLIENT_ID=test-client GOOGLE_CLIENT_SECRET=test-secret GOOGLE_REFRESH_TOKEN=test-refresh-token \
+          GOOGLE_DRIVE_FOLDER_ID=test-folder \
+          GOOGLE_OAUTH_TOKEN_URL=http://127.0.0.1:9999/token GOOGLE_DRIVE_API_BASE=http://127.0.0.1:9999 \
+          APP_URL=http://127.0.0.1:8080 \
+          node artifacts/api-server/dist/index.mjs > drive-app.log 2>&1 &
+          # 8081: no Drive configured → fallback to the listening page
+          PORT=8081 APP_URL=http://127.0.0.1:8081 node artifacts/api-server/dist/index.mjs > site-app.log 2>&1 &
+          for p in 8080 8081 9999; do
+            for i in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$p/" && break; sleep 1; done
+          done
+          curl -sf http://127.0.0.1:8080/api/healthz && curl -sf http://127.0.0.1:8081/api/config
+
+      - name: Install E2E deps
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E
+        working-directory: e2e
+        run: node run.mjs
+
+      - name: Server logs
+        if: always()
+        run: tail -n 80 drive-app.log site-app.log mock.log || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e/artifacts/
+          retention-days: 7

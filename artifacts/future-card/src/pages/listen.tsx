@@ -30,10 +30,9 @@ export default function ListenPublicView() {
   const driveUrl = normalizeDriveLink(card?.voiceMessageUrl);
 
   useEffect(() => {
-    if (driveUrl) {
-      const timer = setTimeout(() => window.location.replace(driveUrl), 900);
-      return () => clearTimeout(timer);
-    }
+    if (!driveUrl) return undefined;
+    const timer = setTimeout(() => window.location.replace(driveUrl), 900);
+    return () => clearTimeout(timer);
   }, [driveUrl]);
 
   const shell = (children: ReactNode) => (

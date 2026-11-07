@@ -86,6 +86,15 @@ jobs:
           tail -n 80 drive-app.log site-app.log mock.log || true
           mkdir -p e2e/artifacts && cp drive-app.log site-app.log mock.log e2e/artifacts/ 2>/dev/null || true
 
+      - name: Reproduce the Vercel build
+        if: always() && github.ref == 'refs/heads/redesign-drive-qr'
+        continue-on-error: true
+        run: |
+          mkdir -p .vercel e2e/artifacts
+          echo '{"projectId":"prj_local","orgId":"team_local","settings":{"framework":null,"buildCommand":null,"outputDirectory":null,"installCommand":null,"nodeVersion":"22.x"}}' > .vercel/project.json
+          set -o pipefail
+          npx -y vercel@latest build --yes 2>&1 | tee e2e/artifacts/vercel-build.log
+
       - name: Publish screenshots (PR branch only)
         if: always() && github.ref == 'refs/heads/redesign-drive-qr'
         run: |

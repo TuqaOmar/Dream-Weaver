@@ -43,7 +43,7 @@ async function api(p, init) {
 }
 
 // ---------------------------------------------------------------- API
-for (const p of ['/api/healthz', '/api/config', '/api/cards/stats/summary']) {
+for (const p of ['/api/healthz', '/api/healthz?db=1', '/api/config', '/api/cards/stats/summary']) {
   const r = await api(p);
   log(`GET ${p}`, r.status === 200, `${r.status} ${r.text.slice(0, 300)}`);
 }

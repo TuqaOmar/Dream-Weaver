@@ -1,7 +1,7 @@
 import { Router } from "express";
 type Request = any;
 type Response = any;
-import { db, cardsTable, eq, ilike, or, sql } from "../../../../lib/db/src/index.js";
+import { db, cardsTable, eq, ilike, or, sql, dbErrorMessage } from "../../../../lib/db/src/index.js";
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import os from "os";
@@ -94,7 +94,7 @@ router.get("/cards/stats/summary", async (req: Request, res: Response) => {
     res.json({ total, completed, drafts, generating, professionBreakdown, recentCards });
   } catch (err) {
     req.log.error({ err }, "Failed to get stats");
-    res.status(500).json({ error: "Failed to get stats" });
+    res.status(500).json({ error: "Failed to get stats", details: dbErrorMessage(err) });
   }
 });
 
@@ -127,7 +127,7 @@ router.get("/cards/public/:id", async (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get public card");
-    res.status(500).json({ error: "Failed to get public card" });
+    res.status(500).json({ error: "Failed to get public card", details: dbErrorMessage(err) });
   }
 });
 
@@ -156,7 +156,7 @@ router.get("/cards", async (req: Request, res: Response) => {
     res.json(cards);
   } catch (err) {
     req.log.error({ err }, "Failed to list cards");
-    res.status(500).json({ error: "Failed to list cards" });
+    res.status(500).json({ error: "Failed to list cards", details: dbErrorMessage(err) });
   }
 });
 
@@ -210,7 +210,7 @@ router.post("/cards", async (req: Request, res: Response) => {
     res.status(201).json(card);
   } catch (err: any) {
     console.error("Failed to create card", err);
-    res.status(500).json({ error: "Failed to create card", details: err?.message || String(err) });
+    res.status(500).json({ error: "Failed to create card", details: dbErrorMessage(err) });
   }
 });
 
@@ -231,7 +231,7 @@ router.get("/cards/:id/public", async (req: Request, res: Response) => {
     res.json(card[0]);
   } catch (err) {
     req.log.error({ err }, "Failed to get public card");
-    res.status(500).json({ error: "Failed to get public card" });
+    res.status(500).json({ error: "Failed to get public card", details: dbErrorMessage(err) });
   }
 });
 
@@ -252,7 +252,7 @@ router.get("/cards/:id", async (req: Request, res: Response) => {
     res.json(card[0]);
   } catch (err) {
     req.log.error({ err }, "Failed to get card");
-    res.status(500).json({ error: "Failed to get card" });
+    res.status(500).json({ error: "Failed to get card", details: dbErrorMessage(err) });
   }
 });
 
@@ -299,7 +299,7 @@ router.patch("/cards/:id", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "Failed to update card");
-    res.status(500).json({ error: "Failed to update card" });
+    res.status(500).json({ error: "Failed to update card", details: dbErrorMessage(err) });
   }
 });
 
@@ -321,7 +321,7 @@ router.delete("/cards/:id", async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete card");
-    res.status(500).json({ error: "Failed to delete card" });
+    res.status(500).json({ error: "Failed to delete card", details: dbErrorMessage(err) });
   }
 });
 
@@ -350,7 +350,7 @@ router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "Failed to delete card photo");
-    res.status(500).json({ error: "Failed to delete card photo" });
+    res.status(500).json({ error: "Failed to delete card photo", details: dbErrorMessage(err) });
   }
 });
 
@@ -421,7 +421,7 @@ router.post("/cards/:id/generate", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "Failed to generate card image");
-    res.status(500).json({ error: "Failed to generate card image" });
+    res.status(500).json({ error: "Failed to generate card image", details: dbErrorMessage(err) });
   }
 });
 

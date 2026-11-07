@@ -121,6 +121,15 @@ const consoleErrors = [];
 page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()));
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 
+await step('API: database health check + SPA deep links', async () => {
+  const h = await (await fetch(`${DRIVE_APP}/api/healthz?db=1`)).json();
+  assert.equal(h.database, 'ok');
+  for (const p of ['/create', '/dashboard', '/listen/x', '/card/x']) {
+    const r = await fetch(`${DRIVE_APP}${p}`);
+    assert.equal(r.status, 200, p);
+  }
+});
+
 await step('API: /api/config reports Drive enabled / disabled', async () => {
   const a = await (await fetch(`${DRIVE_APP}/api/config`)).json();
   const b = await (await fetch(`${SITE_APP}/api/config`)).json();

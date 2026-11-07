@@ -1,0 +1,17 @@
+OK   GET /api/healthz — 200 {"status":"ok"}
+FAIL GET /api/healthz?db=1 — 503 {"status":"degraded","database":"error","details":"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found"}
+OK   GET /api/config — 200 {"driveEnabled":false,"maxUploadBytes":4194304}
+FAIL GET /api/cards/stats/summary — 503 {"error":"database_unavailable","details":"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found"}
+FAIL POST /api/cards (database write) — 503 {"error":"database_unavailable","details":"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found"}
+FAIL GET /api/cards (database read) — 503 {"error":"database_unavailable","details":"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found"}
+OK   deep link /listen/:id serves the app — 200
+OK   page / — 200
+OK   page /create — 200
+OK   page /dashboard — 200
+OK   new UI deployed
+FAIL create card through UI — TimeoutError: page.waitForURL: Timeout 45000ms exceeded.
+=========================== logs ===========================
+waiting for navigation until "load"
+============================================================
+FAIL browser console errors — ["Failed to load resource: the server responded with a status of 503 ()","Failed to load resource: the server responded with a status of 503 ()","Failed to load resource: the server responded with a status of 503 ()","Failed to load resource: the server responded with a status of 503 ()","Error: database_unavailable\n    at z (https://dream-weaver-gamma-lime.vercel.app/assets/index-B9_RtAzC.js:55:32515)\n    at async U (https://dream-weaver-gamma-lime.vercel.app/assets/index-B9_RtAzC.js:55:32803)"]
+FAIL failed API requests — ["GET /api/cards → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}","GET /api/cards → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}","GET /api/cards/stats/summary → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}","POST /api/upload/voice → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not

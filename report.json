@@ -1,0 +1,85 @@
+{
+  "base": "https://dream-weaver-gamma-lime.vercel.app",
+  "checks": [
+    {
+      "name": "GET /api/healthz",
+      "ok": true,
+      "detail": "200 {\"status\":\"ok\"}"
+    },
+    {
+      "name": "GET /api/healthz?db=1",
+      "ok": false,
+      "detail": "503 {\"status\":\"degraded\",\"database\":\"error\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}"
+    },
+    {
+      "name": "GET /api/config",
+      "ok": true,
+      "detail": "200 {\"driveEnabled\":false,\"maxUploadBytes\":4194304}"
+    },
+    {
+      "name": "GET /api/cards/stats/summary",
+      "ok": false,
+      "detail": "503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}"
+    },
+    {
+      "name": "POST /api/cards (database write)",
+      "ok": false,
+      "detail": "503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}"
+    },
+    {
+      "name": "GET /api/cards (database read)",
+      "ok": false,
+      "detail": "503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}"
+    },
+    {
+      "name": "deep link /listen/:id serves the app",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /create",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /dashboard",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "new UI deployed",
+      "ok": true
+    },
+    {
+      "name": "create card through UI",
+      "ok": false,
+      "detail": "TimeoutError: page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+    },
+    {
+      "name": "browser console errors",
+      "ok": false,
+      "detail": [
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Error: database_unavailable\n    at z (https://dream-weaver-gamma-lime.vercel.app/assets/index-B9_RtAzC.js:55:32515)\n    at async U (https://dream-weaver-gamma-lime.vercel.app/assets/index-B9_RtAzC.js:55:32803)"
+      ]
+    },
+    {
+      "name": "failed API requests",
+      "ok": false,
+      "detail": [
+        "GET /api/cards → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}",
+        "GET /api/cards → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}",
+        "GET /api/cards/stats/summary → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}",
+        "POST /api/upload/voice → 503 {\"error\":\"database_unavailable\",\"details\":\"XX000: (ENOTFOUND) tenant/user postgres.rqrhrmtpypbqndxoczeh not found\"}"
+      ]
+    }
+  ]
+}

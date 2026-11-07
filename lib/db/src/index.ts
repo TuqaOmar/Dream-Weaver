@@ -29,11 +29,23 @@ function createDb() {
     return { pool: null, db };
   }
 
-  const ssl = dbUrl.includes("supabase") || dbUrl.includes("sslmode=require") || dbUrl.includes("pooler.supabase.com")
-    ? { rejectUnauthorized: false }
-    : undefined;
+  // node-postgres treats `sslmode=require` in the URL as full certificate
+  // verification, which fails against Supabase's pooler certificate
+  // (SELF_SIGNED_CERT_IN_CHAIN). Strip the URL's SSL params and pass an
+  // explicit encrypted-but-unverified SSL config for every remote host.
+  let connectionString = dbUrl;
+  let isLocal = false;
+  try {
+    const u = new URL(dbUrl);
+    isLocal = ["localhost", "127.0.0.1", "::1"].includes(u.hostname);
+    for (const k of ["sslmode", "sslrootcert", "sslcert", "sslkey", "ssl", "uselibpqcompat"]) u.searchParams.delete(k);
+    connectionString = u.toString();
+  } catch {
+    /* keep the original string */
+  }
+  const ssl = isLocal ? undefined : { rejectUnauthorized: false };
 
-  const pool = new Pool({ connectionString: dbUrl, ssl });
+  const pool = new Pool({ connectionString, ssl, max: process.env.VERCEL ? 3 : 10 });
   const db = drizzleNode(pool, { schema });
   return { pool, db };
 }

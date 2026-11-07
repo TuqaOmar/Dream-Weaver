@@ -82,7 +82,11 @@ export default function Create() {
       console.error(error);
       toast({
         title: t('error.genericTitle'),
-        description: error?.message && error.message !== 'Failed to fetch' ? error.message : t('error.tryAgain'),
+        description: /database_unavailable|503/.test(String(error?.message ?? error?.status ?? ''))
+          ? t('error.database')
+          : error?.message && error.message !== 'Failed to fetch'
+            ? error.message
+            : t('error.tryAgain'),
         variant: 'destructive',
       });
       setStep(2);

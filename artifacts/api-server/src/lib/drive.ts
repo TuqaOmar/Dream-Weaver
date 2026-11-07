@@ -21,6 +21,10 @@
 
 const TOKEN_URL = () =>
   process.env.GOOGLE_OAUTH_TOKEN_URL || "https://oauth2.googleapis.com/token";
+// Vercel's function compiler type-checks without DOM/undici types, so keep
+// fetch loosely typed here.
+const httpFetch = (globalThis as any).fetch as (url: string, init?: any) => Promise<any>;
+
 const API_BASE = () =>
   (process.env.GOOGLE_DRIVE_API_BASE || "https://www.googleapis.com").replace(/\/$/, "");
 
@@ -46,7 +50,7 @@ async function getAccessToken(): Promise<string> {
     grant_type: "refresh_token",
   });
 
-  const res = await fetch(TOKEN_URL(), {
+  const res = await httpFetch(TOKEN_URL(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
@@ -91,7 +95,7 @@ export async function uploadToDrive(
     Buffer.from(`\r\n--${boundary}--`),
   ]);
 
-  const uploadRes = await fetch(
+  const uploadRes = await httpFetch(
     `${API_BASE()}/upload/drive/v3/files?uploadType=multipart&fields=id&supportsAllDrives=true`,
     {
       method: "POST",
@@ -110,7 +114,7 @@ export async function uploadToDrive(
   }
 
   // Make it viewable by anyone who scans the QR code (no Google login needed).
-  const permRes = await fetch(
+  const permRes = await httpFetch(
     `${API_BASE()}/drive/v3/files/${encodeURIComponent(uploaded.id)}/permissions?supportsAllDrives=true`,
     {
       method: "POST",

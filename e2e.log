@@ -1,0 +1,15 @@
+• API: /api/config reports Drive enabled / disabled … ok
+• API: Drive links are normalised in every common format … ok
+• Home page renders (ar + en) … ok
+• Upload audio → stored on Google Drive → QR opens the Drive file … ok
+• Downloaded PNG card contains a scannable QR pointing to Drive … ok
+• Old /listen link for a Drive card redirects to Google Drive … ok
+• Pasted Drive link → QR opens exactly that Drive file … ok
+• Changing the Drive link on the card regenerates the QR … ok
+• Microphone recording without Drive → QR opens the listening page that plays it … ok
+• Dashboard lists the cards … ok
+• Mobile layout of the create wizard and card page … ok
+• Too-large audio file is rejected with a clear message … ok
+• No unexpected console errors … ok
+
+13 passed, 0 failed

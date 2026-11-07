@@ -1,58 +1,39 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-interface WizardProgressProps {
-  currentStep: number;
-  totalSteps: number;
-}
-
-export function WizardProgress({ currentStep, totalSteps }: WizardProgressProps) {
+export function WizardProgress({ currentStep }: { currentStep: number }) {
   const { t } = useLanguage();
-  
+  const steps = [t('step.1'), t('step.2'), t('step.3')];
+
   return (
-    <div className="w-full py-6">
-      <div className="flex items-center justify-between relative max-w-2xl mx-auto">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-muted rounded-full overflow-hidden">
-          <motion.div 
-            className="h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-          />
-        </div>
-        
-        {Array.from({ length: totalSteps }).map((_, idx) => {
-          const step = idx + 1;
-          const isActive = step === currentStep;
-          const isCompleted = step < currentStep;
-          
-          return (
-            <div key={step} className="relative z-10 flex flex-col items-center gap-2">
-              <motion.div 
+    <ol className="mx-auto flex max-w-xl items-center" aria-label={t('wizard.progress')}>
+      {steps.map((label, idx) => {
+        const n = idx + 1;
+        const done = n < currentStep;
+        const active = n === currentStep;
+        return (
+          <li key={n} className={cn('flex items-center', idx < steps.length - 1 && 'flex-1')}>
+            <div className="flex items-center gap-2.5">
+              <span
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 bg-background transition-colors duration-300",
-                  isActive ? "border-primary text-primary shadow-[0_0_0_4px_rgba(var(--primary),0.1)]" : 
-                  isCompleted ? "border-primary bg-primary text-primary-foreground" : 
-                  "border-muted text-muted-foreground"
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors',
+                  done && 'border-primary bg-primary text-primary-foreground',
+                  active && 'border-primary bg-background text-primary ring-4 ring-primary/10',
+                  !done && !active && 'border-border bg-background text-muted-foreground',
                 )}
-                initial={false}
-                animate={isActive ? { scale: 1.1 } : { scale: 1 }}
+                aria-current={active ? 'step' : undefined}
               >
-                {isCompleted ? <Check className="w-4 h-4" /> : step}
-              </motion.div>
-              <span className={cn(
-                "text-xs font-medium absolute -bottom-6 w-max text-center transition-colors duration-300",
-                isActive ? "text-foreground" : "text-muted-foreground"
-              )}>
-                {t(`step.${step}`)}
+                {done ? <Check className="h-4 w-4" /> : n}
               </span>
+              <span className={cn('text-sm font-medium', active || done ? 'text-foreground' : 'text-muted-foreground')}>{label}</span>
             </div>
-          );
-        })}
-      </div>
-    </div>
+            {idx < steps.length - 1 && (
+              <span className={cn('mx-3 h-px flex-1 transition-colors', done ? 'bg-primary' : 'bg-border')} />
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

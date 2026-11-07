@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main, live-check]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  live:
+    if: github.ref == 'refs/heads/live-check' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LIVE_URL: https://dream-weaver-gamma-lime.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wait for the Vercel production deployment
+        if: github.ref == 'refs/heads/main'
+        run: sleep 180
+      - name: Install
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Check live site
+        working-directory: e2e
+        run: node live.mjs 2>&1 | tee artifacts-live.log
+      - name: Publish report
+        if: always()
+        run: |
+          mkdir -p out && cp -r e2e/artifacts/live/. out/ 2>/dev/null; cp e2e/artifacts-live.log out/ 2>/dev/null
+          cd out && git init -q && git checkout -q -b live-report
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm "live report ${GITHUB_SHA}" || exit 0
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" live-report
+
+  build-and-e2e:
+    if: github.ref != 'refs/heads/live-check'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: futurecard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/futurecard
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck + build (same command Vercel runs)
+        run: |
+          mkdir -p e2e/artifacts
+          set -o pipefail
+          pnpm run build 2>&1 | tee e2e/artifacts/build.log
+
+      - name: Create database schema
+        run: pnpm --filter @workspace/db run push-force
+
+      - name: Start mock Google + two app servers
+        run: |
+          node e2e/mock-google.mjs > mock.log 2>&1 &
+          # 8080: Google Drive configured (pointed at the mock)
+          PORT=8080 \
+          GOOGLE_CLIENT_ID=test-client GOOGLE_CLIENT_SECRET=test-secret GOOGLE_REFRESH_TOKEN=test-refresh-token \
+          GOOGLE_DRIVE_FOLDER_ID=test-folder \
+          GOOGLE_OAUTH_TOKEN_URL=http://127.0.0.1:9999/token GOOGLE_DRIVE_API_BASE=http://127.0.0.1:9999 \
+          APP_URL=http://127.0.0.1:8080 \
+          node artifacts/api-server/dist/index.mjs > drive-app.log 2>&1 &
+          # 8081: no Drive configured → fallback to the listening page
+          PORT=8081 APP_URL=http://127.0.0.1:8081 node artifacts/api-server/dist/index.mjs > site-app.log 2>&1 &
+          for p in 8080 8081 9999; do
+            for i in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$p/" && break; sleep 1; done
+          done
+          curl -sf http://127.0.0.1:8080/api/healthz && curl -sf http://127.0.0.1:8081/api/config
+
+      - name: Install E2E deps
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E
+        working-directory: e2e
+        run: |
+          set -o pipefail
+          node run.mjs 2>&1 | tee artifacts/e2e.log
+
+      - name: Server logs
+        if: always()
+        run: |
+          tail -n 80 drive-app.log site-app.log mock.log || true
+          mkdir -p e2e/artifacts && cp drive-app.log site-app.log mock.log e2e/artifacts/ 2>/dev/null || true
+
+      - name: Reproduce the Vercel build (catches errors only Vercel's compiler reports)
+        run: |
+          mkdir -p .vercel e2e/artifacts
+          echo '{"projectId":"prj_local","orgId":"team_local","settings":{"framework":null,"buildCommand":null,"outputDirectory":null,"installCommand":null,"nodeVersion":"22.x"}}' > .vercel/project.json
+          set -o pipefail
+          npx -y vercel@latest build --yes 2>&1 | tee e2e/artifacts/vercel-build.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e/artifacts/
+          retention-days: 7

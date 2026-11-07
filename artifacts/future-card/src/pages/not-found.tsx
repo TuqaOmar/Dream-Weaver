@@ -1,26 +1,16 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { Link } from 'wouter';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function NotFound() {
   const { t } = useLanguage();
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              {t('notFound.title')}
-            </h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            {t('notFound.description')}
-          </p>
-        </CardContent>
-      </Card>
+    <div className="bg-paper flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
+      <p className="font-serif text-7xl font-semibold text-foreground/10">404</p>
+      <h1 className="mt-2 font-serif text-2xl font-semibold">{t('notFound.title')}</h1>
+      <p className="mt-2 text-muted-foreground">{t('notFound.description')}</p>
+      <Link href="/" className="mt-8 inline-flex h-11 items-center rounded-full bg-primary px-6 font-semibold text-primary-foreground">
+        {t('notFound.home')}
+      </Link>
     </div>
   );
 }

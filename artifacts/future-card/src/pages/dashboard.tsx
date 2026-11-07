@@ -1,173 +1,144 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
-import { useListCards, useGetCardStats, useDeleteCard, getListCardsQueryKey, getGetCardStatsQueryKey } from '@workspace/api-client-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, Edit2, Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { Plus, Search, Trash2, ImageIcon, HardDrive, Globe } from 'lucide-react';
+import {
+  useListCards,
+  useGetCardStats,
+  useDeleteCard,
+  getListCardsQueryKey,
+  getGetCardStatsQueryKey,
+} from '@workspace/api-client-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MemoryFrame } from '@/components/MemoryFrame';
+import { isDriveUrl } from '@/lib/drive';
+import { loadTheme } from '@/lib/frame';
 
 export default function Dashboard() {
   const { t, language } = useLanguage();
-  const [search, setSearch] = React.useState('');
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const queryClient = useQueryClient();
-  
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const params = debounced ? { search: debounced } : undefined;
   const { data: stats } = useGetCardStats({ query: { queryKey: getGetCardStatsQueryKey() } });
-  const { data: cards, isLoading } = useListCards(
-    search ? { search } : undefined, 
-    { query: { queryKey: getListCardsQueryKey(search ? { search } : undefined) } }
-  );
-  
+  const { data: cards, isLoading } = useListCards(params, { query: { queryKey: getListCardsQueryKey(params) } });
   const deleteCard = useDeleteCard();
 
   const handleDelete = async (id: string) => {
-    if (confirm(t('common.confirmDelete'))) {
-      await deleteCard.mutateAsync({ id });
-      queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetCardStatsQueryKey() });
-    }
+    if (!confirm(t('common.confirmDelete'))) return;
+    await deleteCard.mutateAsync({ id });
+    queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetCardStatsQueryKey() });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium border border-green-200 dark:border-green-800">{t('card.status.completed')}</span>;
-      case 'generating':
-        return <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-medium border border-amber-200 dark:border-amber-800 animate-pulse">{t('card.status.generating')}</span>;
-      default:
-        return <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-xs font-medium border border-gray-200 dark:border-gray-700">{t('card.status.draft')}</span>;
-    }
-  };
+  const dateFmt = new Intl.DateTimeFormat(language === 'ar' ? 'ar-JO' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-background pt-8 pb-20">
-      <div className="container mx-auto px-4 md:px-8 max-w-6xl">
-        
-        {/* Header & Stats */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
-          <div>
-            <h1 className="text-4xl font-serif font-semibold text-foreground mb-2">{t('dashboard.title')}</h1>
+    <div className="bg-paper min-h-[calc(100dvh-4rem)] pb-20 pt-10">
+      <div className="mx-auto max-w-6xl px-4 md:px-8">
+        <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="space-y-2">
+            <h1 className="font-serif text-4xl font-semibold">{t('dashboard.title')}</h1>
             <p className="text-muted-foreground">{t('dashboard.description')}</p>
           </div>
-          
           {stats && (
-            <div className="flex gap-4 p-2 bg-white/50 dark:bg-black/20 rounded-2xl border border-border backdrop-blur-sm shadow-sm">
-              <div className="px-4 py-2 text-center">
-                <div className="text-2xl font-serif text-primary">{stats.total}</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('dashboard.stats.total')}</div>
+            <dl className="flex divide-x divide-border rounded-2xl border border-border bg-card rtl:divide-x-reverse">
+              <div className="px-6 py-3 text-center">
+                <dt className="text-xs text-muted-foreground">{t('dashboard.stats.total')}</dt>
+                <dd className="font-serif text-2xl font-semibold">{stats.total}</dd>
               </div>
-              <div className="w-px bg-border my-2" />
-              <div className="px-4 py-2 text-center">
-                <div className="text-2xl font-serif text-green-600">{stats.completed}</div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('dashboard.stats.completed')}</div>
+              <div className="px-6 py-3 text-center">
+                <dt className="text-xs text-muted-foreground">{t('dashboard.stats.completed')}</dt>
+                <dd className="font-serif text-2xl font-semibold text-emerald-700">{stats.completed}</dd>
               </div>
-            </div>
+            </dl>
           )}
         </div>
 
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('dashboard.searchPlaceholder')}
-              className="pl-10 h-12 rounded-xl bg-white dark:bg-card shadow-sm border-border"
+              className="h-11 w-full rounded-full border border-input bg-card pe-4 ps-10 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
             />
           </div>
-          
-          <Link href="/create">
-            <Button size="lg" className="w-full sm:w-auto rounded-xl gap-2 shadow-primary/20 shadow-lg">
-              <PlusCircle className="w-5 h-5" />
-              {t('nav.create')}
-            </Button>
+          <Link href="/create" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-4 w-4" />
+            {t('nav.create')}
           </Link>
         </div>
 
-        {/* Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="aspect-[3/4] rounded-3xl bg-muted animate-pulse" />
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="aspect-[2/3] animate-pulse rounded-3xl bg-muted" />
             ))}
           </div>
         ) : cards && cards.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((card, idx) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
-                key={card.id} 
-                className="group relative flex flex-col bg-card rounded-3xl border border-border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <Link href={`/card/${card.id}`} className="block relative aspect-[2/3] overflow-hidden bg-muted">
-                  {(card.childPhotoUrl || card.aiImageUrl) ? (
-                    <MemoryFrame
-                      src={card.childPhotoUrl || card.aiImageUrl || ''}
-                      alt={card.childName}
-                      qrCodeUrl={card.qrCodeUrl}
-                      className="h-full aspect-auto rounded-none shadow-none transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : card.childPhotoUrl ? (
-                    <div className="w-full h-full relative">
-                      <img src={card.childPhotoUrl} alt={card.childName} className="w-full h-full object-cover opacity-50 blur-sm" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <ImageIcon className="w-12 h-12 text-muted-foreground opacity-50" />
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+            {cards.map((card, idx) => {
+              const photo = card.childPhotoUrl || card.aiImageUrl;
+              const drive = isDriveUrl(card.voiceMessageUrl);
+              return (
+                <motion.article
+                  key={card.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(idx, 8) * 0.04 }}
+                  className="group"
+                >
+                  <Link href={`/card/${card.id}`} className="block transition-transform duration-300 group-hover:-translate-y-1">
+                    {photo ? (
+                      <MemoryFrame src={photo} alt={card.childName} qrCodeUrl={card.qrCodeUrl} theme={loadTheme(card.id)} />
+                    ) : (
+                      <div className="flex aspect-[2/3] items-center justify-center rounded-3xl border border-dashed border-border bg-card text-muted-foreground">
+                        <ImageIcon className="h-10 w-10 opacity-40" />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
-                      <ImageIcon className="w-16 h-16" />
-                    </div>
-                  )}
-                  
-                  <div className="absolute top-4 right-4">
-                    {getStatusBadge(card.status)}
-                  </div>
-                </Link>
-
-                <div className="p-4 flex items-center justify-between border-t border-border bg-card">
-                  <div className="text-xs text-muted-foreground font-medium">
-                    <span className="block font-serif text-lg text-foreground">{card.childName}</span>
-                    <span>{language === 'ar'
-                      ? new Date(card.createdAt).toLocaleDateString('ar-JO')
-                      : format(new Date(card.createdAt), 'MMM d, yyyy')}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(card.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                    {card.status === 'completed' && (
-                      <Link href={`/memory/${card.id}`} target="_blank">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-muted-foreground hover:text-primary">
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </Link>
                     )}
+                  </Link>
+                  <div className="mt-3 flex items-start justify-between gap-2 px-1">
+                    <div className="min-w-0">
+                      <Link href={`/card/${card.id}`} className="block truncate font-semibold hover:underline">
+                        {card.childName}
+                      </Link>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {drive ? <HardDrive className="h-3 w-3 text-emerald-700" /> : <Globe className="h-3 w-3" />}
+                        {dateFmt.format(new Date(card.createdAt))}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(card.id)}
+                      className="rounded-full p-2 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.article>
+              );
+            })}
           </div>
         ) : (
-          <div className="text-center py-32 bg-white/50 dark:bg-card/50 rounded-3xl border border-dashed border-border">
-            <div className="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-              <ImageIcon className="w-10 h-10" />
+          <div className="rounded-[2rem] border border-dashed border-border bg-card/60 px-6 py-24 text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary">
+              <ImageIcon className="h-7 w-7" />
             </div>
-            <h3 className="text-2xl font-serif text-foreground mb-2">{t('dashboard.empty')}</h3>
-            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              {t('dashboard.emptyDescription')}
-            </p>
-            <Link href="/create">
-              <Button size="lg" className="rounded-full shadow-lg">
-                {t('nav.create')}
-              </Button>
+            <h2 className="mb-2 font-serif text-2xl font-semibold">{t('dashboard.empty')}</h2>
+            <p className="mx-auto mb-8 max-w-md text-muted-foreground">{t('dashboard.emptyDescription')}</p>
+            <Link href="/create" className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground">
+              <Plus className="h-4 w-4" />
+              {t('nav.create')}
             </Link>
           </div>
         )}

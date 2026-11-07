@@ -1,87 +1,102 @@
-import React from 'react';
 import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Camera, Mic, QrCode, Printer, ShieldCheck, HardDrive } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Sparkles, Heart, Star } from 'lucide-react';
+import { MemoryFrame } from '@/components/MemoryFrame';
+import { DEMO_PHOTO, DEMO_QR } from '@/lib/demo-art';
 
 export default function Home() {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
+  const Arrow = isRTL ? ArrowLeft : ArrowRight;
+
+  const steps = [
+    { icon: Camera, title: t('home.step1.title'), body: t('home.step1.body') },
+    { icon: Mic, title: t('home.step2.title'), body: t('home.step2.body') },
+    { icon: QrCode, title: t('home.step3.title'), body: t('home.step3.body') },
+  ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px]" />
-      </div>
+    <div className="bg-paper">
+      {/* Hero */}
+      <section className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-12 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-8">
+          <span className="eyebrow">{t('hero.badge')}</span>
+          <h1 className="text-balance font-serif text-5xl font-semibold leading-[1.1] tracking-tight text-foreground md:text-6xl">
+            {t('hero.title')}
+          </h1>
+          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">{t('hero.subtitle')}</p>
 
-      <div className="container mx-auto px-4 py-20 relative z-10">
-        <div className="max-w-4xl mx-auto text-center space-y-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-6"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-sm font-medium mb-4">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <span>{t('hero.badge')}</span>
-            </div>
-            
-            <h1 className="text-5xl md:text-7xl font-serif text-foreground leading-tight tracking-tight">
-              {t('hero.title')}
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              {t('hero.subtitle')}
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Link href="/create">
-              <Button size="lg" className="rounded-full h-16 px-10 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-                {t('hero.cta')}
-                <Star className="ml-2 w-5 h-5 fill-current opacity-70" />
-              </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/create"
+              className="group inline-flex h-14 items-center gap-3 rounded-full bg-primary px-8 text-base font-semibold text-primary-foreground shadow-[0_12px_30px_-10px_hsl(var(--primary)/0.6)] transition hover:bg-primary/90 active:scale-[0.98]"
+              data-testid="cta-create"
+            >
+              {t('hero.cta')}
+              <Arrow className="h-5 w-5 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />
             </Link>
-          </motion.div>
+            <Link href="/dashboard" className="inline-flex h-14 items-center rounded-full px-6 text-base font-medium text-foreground/80 hover:text-foreground">
+              {t('hero.secondary')}
+            </Link>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
-            className="pt-20 grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-xl font-medium">{t('home.magic.title')}</h3>
-              <p className="text-muted-foreground">{t('home.magic.description')}</p>
-            </div>
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-xl font-medium">{t('home.voice.title')}</h3>
-              <p className="text-muted-foreground">{t('home.voice.description')}</p>
-            </div>
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-green-500/10 text-green-600 flex items-center justify-center mx-auto mb-4">
-                <div className="font-serif text-2xl font-bold" aria-label={t('common.qrAlt')}>QR</div>
-              </div>
-              <h3 className="font-serif text-xl font-medium">{t('home.qr.title')}</h3>
-              <p className="text-muted-foreground">{t('home.qr.description')}</p>
-            </div>
-          </motion.div>
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-accent" />{t('hero.point1')}</li>
+            <li className="flex items-center gap-2"><Printer className="h-4 w-4 text-accent" />{t('hero.point2')}</li>
+            <li className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-accent" />{t('hero.point3')}</li>
+          </ul>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24, rotate: isRTL ? 2 : -2 }}
+          animate={{ opacity: 1, y: 0, rotate: isRTL ? 2 : -2 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+          className="relative mx-auto w-full max-w-[340px]"
+        >
+          <div className="absolute -inset-10 -z-10 rounded-full bg-accent/15 blur-3xl" />
+          <MemoryFrame src={DEMO_PHOTO} alt="" qrCodeUrl={DEMO_QR} childName={t('home.demoName')} theme="rainbow" />
+        </motion.div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-y border-border/70 bg-card/60">
+        <div className="mx-auto max-w-6xl px-4 py-20 md:px-8">
+          <div className="mb-12 max-w-2xl space-y-3">
+            <span className="eyebrow">{t('home.how.eyebrow')}</span>
+            <h2 className="font-serif text-3xl font-semibold md:text-4xl">{t('home.how.title')}</h2>
+          </div>
+          <ol className="grid gap-6 md:grid-cols-3">
+            {steps.map(({ icon: Icon, title, body }, i) => (
+              <li key={i} className="relative rounded-3xl border border-border bg-background p-7">
+                <span className="absolute end-6 top-6 font-serif text-5xl font-semibold text-foreground/[0.06]">{i + 1}</span>
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+                <p className="leading-relaxed text-muted-foreground">{body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
-      </div>
+      </section>
+
+      {/* CTA band */}
+      <section className="mx-auto max-w-6xl px-4 py-20 md:px-8">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-[2rem] bg-primary px-8 py-12 text-primary-foreground md:flex-row md:items-center md:px-12">
+          <div className="space-y-2">
+            <h2 className="font-serif text-3xl font-semibold">{t('home.band.title')}</h2>
+            <p className="text-primary-foreground/70">{t('home.band.body')}</p>
+          </div>
+          <Link href="/create" className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-[#f4e6cf] px-7 font-semibold text-primary transition hover:bg-white">
+            {t('hero.cta')}
+            <Arrow className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-border/70 py-8 text-center text-sm text-muted-foreground">
+        {t('memory.brand')} · {new Date().getFullYear()}
+      </footer>
     </div>
   );
 }

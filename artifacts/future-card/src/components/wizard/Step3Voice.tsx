@@ -1,368 +1,297 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Square, Play, Trash2, Upload, Volume2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mic, Square, Upload, Link2, Trash2, CheckCircle2, AlertCircle, Info, HardDrive } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
-import { Textarea } from '@/components/ui/textarea';
+import { AudioPlayer } from '@/components/VoicePlayer';
+import { parseDriveLink } from '@/lib/drive';
+import { useAppConfig } from '@/hooks/use-app-config';
 
-interface Step3VoiceProps {
-  voiceBlobUrl: string | null;
-  parentMessage: string;
-  onChange: (updates: { voiceBlobUrl?: string | null, voiceFile?: File | null, parentMessage?: string }) => void;
+export type VoiceMode = 'record' | 'upload' | 'drive';
+
+export interface VoiceState {
+  mode: VoiceMode;
+  file: File | null;
+  blobUrl: string | null;
+  driveLink: string;
+  message: string;
+}
+
+export const EMPTY_VOICE: VoiceState = { mode: 'record', file: null, blobUrl: null, driveLink: '', message: '' };
+
+const MAX_RECORD_SECONDS = 5 * 60;
+const SITE_STORAGE_LIMIT = 2 * 1024 * 1024; // keeps the whole card under Vercel's request limit
+
+interface Props {
+  value: VoiceState;
+  onChange: (u: Partial<VoiceState>) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export function Step3Voice({ voiceBlobUrl, parentMessage, onChange, onNext, onBack }: Step3VoiceProps) {
+const mb = (b: number) => (b / 1024 / 1024).toFixed(1);
+
+export function Step3Voice({ value, onChange, onNext, onBack }: Props) {
   const { t } = useLanguage();
+  const { data: config } = useAppConfig();
+  const driveEnabled = !!config?.driveEnabled;
+  const maxBytes = driveEnabled ? config!.maxUploadBytes : SITE_STORAGE_LIMIT;
+
   const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [playbackTime, setPlaybackTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let interval: number | null = null;
-    if (isRecording) {
-      setDuration(0);
-      interval = window.setInterval(() => {
-        setDuration((d) => d + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) window.clearInterval(interval);
-    };
+    if (!isRecording) return;
+    setSeconds(0);
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
   }, [isRecording]);
 
   useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
+    if (isRecording && seconds >= MAX_RECORD_SECONDS) stopRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seconds, isRecording]);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  useEffect(
+    () => () => {
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
+    },
+    [],
+  );
 
-    const handleTimeUpdate = () => setPlaybackTime(audio.currentTime);
-    const handleDuration = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        setAudioDuration(audio.duration);
-      }
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setPlaybackTime(0);
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleDuration);
-    audio.addEventListener('durationchange', handleDuration);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleDuration);
-      audio.removeEventListener('durationchange', handleDuration);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [voiceBlobUrl]);
+  const setAudio = (file: File | null) => {
+    setFileError(null);
+    if (file && file.size > maxBytes) {
+      setFileError(t('step3.tooLarge').replace('{size}', mb(file.size)).replace('{max}', mb(maxBytes)));
+      return;
+    }
+    onChange({ file, blobUrl: file ? URL.createObjectURL(file) : null });
+  };
 
   const startRecording = async () => {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert(t('error.microphone'));
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setFileError(t('error.microphone'));
         return;
       }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
-
-      let mediaRecorder: MediaRecorder;
-      let actualMimeType = '';
-
-      const supportedTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/aac',
-        'audio/ogg',
-        'audio/wav'
-      ];
-
-      for (const type of supportedTypes) {
-        if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)) {
-          actualMimeType = type;
-          break;
-        }
-      }
-
+      const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/ogg'];
+      const mimeType = types.find((tp) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(tp)) || '';
+      let rec: MediaRecorder;
       try {
-        mediaRecorder = actualMimeType ? new MediaRecorder(stream, { mimeType: actualMimeType }) : new MediaRecorder(stream);
-      } catch (_err) {
-        mediaRecorder = new MediaRecorder(stream);
+        rec = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 64000 });
+      } catch {
+        rec = new MediaRecorder(stream);
       }
-
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
+      recorderRef.current = rec;
+      rec.ondataavailable = (e) => e.data?.size && chunksRef.current.push(e.data);
+      rec.onstop = () => {
+        const type = (rec.mimeType || mimeType || 'audio/webm').split(';')[0];
+        const ext = type.includes('mp4') || type.includes('aac') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm';
+        const blob = new Blob(chunksRef.current, { type });
+        setAudio(new File([blob], `voice-message.${ext}`, { type }));
+        stream.getTracks().forEach((tr) => tr.stop());
       };
-
-      mediaRecorder.onstop = () => {
-        const finalType = mediaRecorder.mimeType || actualMimeType || 'audio/webm';
-        const ext = finalType.includes('mp4') ? 'mp4' : finalType.includes('ogg') ? 'ogg' : finalType.includes('wav') ? 'wav' : 'webm';
-        const blob = new Blob(chunksRef.current, { type: finalType });
-        const url = URL.createObjectURL(blob);
-        const file = new File([blob], `voice-message.${ext}`, { type: finalType });
-
-        setPlaybackTime(0);
-        setAudioDuration(0);
-        setIsPlaying(false);
-        onChange({ voiceBlobUrl: url, voiceFile: file });
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start(250);
+      rec.start(250);
       setIsRecording(true);
+      setFileError(null);
     } catch (err: any) {
-      console.error("Error accessing microphone", err);
-      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
-        alert("يرجى إعطاء الإذن لاستخدام الميكروفون من إعدادات المتصفح للتسجيل.");
-      } else {
-        alert(t('error.microphone'));
-      }
+      setFileError(err?.name === 'NotAllowedError' ? t('error.micPermission') : t('error.microphone'));
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
     setIsRecording(false);
   };
 
-  const togglePlayback = () => {
-    const audio = audioRef.current;
-    if (!audio || !voiceBlobUrl) return;
+  const driveParsed = parseDriveLink(value.driveLink);
+  const driveInvalid = value.driveLink.trim().length > 0 && !driveParsed;
 
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch((err) => console.error("Audio play error:", err));
-    }
-  };
+  const hasVoice = value.mode === 'drive' ? !!driveParsed : !!value.file;
+  const canContinue = (hasVoice || !!value.message.trim()) && !isRecording && !driveInvalid;
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const newTime = Number(e.target.value);
-    audio.currentTime = newTime;
-    setPlaybackTime(newTime);
-  };
+  const tabs: { id: VoiceMode; label: string; icon: typeof Mic }[] = [
+    { id: 'record', label: t('step3.tab.record'), icon: Mic },
+    { id: 'upload', label: t('step3.tab.upload'), icon: Upload },
+    { id: 'drive', label: t('step3.tab.drive'), icon: Link2 },
+  ];
 
-  const handleDelete = () => {
-    onChange({ voiceBlobUrl: null, voiceFile: null });
-    setDuration(0);
-    setPlaybackTime(0);
-    setAudioDuration(0);
-    setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPlaybackTime(0);
-      setAudioDuration(0);
-      setIsPlaying(false);
-      onChange({ voiceBlobUrl: url, voiceFile: file });
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="max-w-2xl mx-auto flex flex-col items-center space-y-10 pb-12"
-    >
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl md:text-4xl font-serif text-foreground">{t('step3.title')}</h2>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="mx-auto max-w-xl space-y-8">
+      <header className="space-y-2 text-center">
+        <h1 className="font-serif text-3xl font-semibold md:text-4xl">{t('step3.title')}</h1>
         <p className="text-muted-foreground">{t('step3.subtitle')}</p>
-      </div>
+      </header>
 
-      <div className="w-full bg-accent/5 dark:bg-accent/10 border border-accent/20 rounded-3xl p-6 md:p-10 flex flex-col items-center justify-center relative overflow-hidden">
-        {isRecording && (
-          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
-            <div className="w-48 h-48 bg-accent rounded-full animate-ping" style={{ animationDuration: '2s' }} />
-            <div className="absolute w-64 h-64 bg-accent rounded-full animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
-          </div>
-        )}
+      <div className="rounded-[1.75rem] border border-border bg-card p-5 shadow-sm sm:p-7">
+        {/* Where the QR leads */}
+        <div className={cn('mb-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm', driveEnabled || value.mode === 'drive' ? 'bg-emerald-50 text-emerald-900' : 'bg-secondary text-secondary-foreground')} data-testid="qr-destination-note">
+          {driveEnabled || value.mode === 'drive' ? <HardDrive className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
+          <p>{value.mode === 'drive' ? t('step3.note.driveLink') : driveEnabled ? t('step3.note.driveAuto') : t('step3.note.site')}</p>
+        </div>
 
-        {!voiceBlobUrl ? (
-          <div className="flex flex-col items-center z-10 space-y-8">
-            <p className="text-lg italic font-serif text-center max-w-md text-foreground/80 px-4">
-              {t('step3.prompt')}
-            </p>
-            
+        {/* Tabs */}
+        <div className="mb-6 grid grid-cols-3 gap-1 rounded-full bg-muted p-1" role="tablist">
+          {tabs.map(({ id, label, icon: Icon }) => (
             <button
-              onClick={isRecording ? stopRecording : startRecording}
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={value.mode === id}
+              disabled={isRecording}
+              onClick={() => {
+                setFileError(null);
+                onChange({ mode: id });
+              }}
               className={cn(
-                "w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl",
-                isRecording 
-                  ? "bg-destructive text-destructive-foreground hover:scale-95" 
-                  : "bg-accent text-accent-foreground hover:scale-105 hover:shadow-accent/30"
+                'flex items-center justify-center gap-1.5 rounded-full px-2 py-2.5 text-sm font-semibold transition',
+                value.mode === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
+              data-testid={`tab-${id}`}
             >
-              {isRecording ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-10 h-10" />}
+              <Icon className="h-4 w-4" />
+              {label}
             </button>
-            
-            <div className="text-center space-y-2">
-              {isRecording ? (
-                <div className="text-destructive font-mono text-xl font-medium tracking-wider">
-                  {formatTime(duration)}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
-                    {t('step3.record')}
-                  </span>
-                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground mt-4" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="w-4 h-4" />
-                    {t('step3.upload')}
-                  </Button>
-                  <input type="file" accept="audio/*" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center z-10 w-full max-w-md space-y-4">
-            <div className="w-full bg-white dark:bg-black/40 rounded-3xl p-6 shadow-sm border border-border/50 flex flex-col gap-5">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={togglePlayback}
-                  className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex flex-shrink-0 items-center justify-center hover:scale-105 transition-transform shadow-md"
-                >
-                  {isPlaying ? (
-                    <Square className="w-5 h-5 fill-current" />
-                  ) : (
-                    <Play className="w-6 h-6 ml-0.5 fill-current" />
-                  )}
-                </button>
-                
-                {/* Waveform Visualization synchronized with playback */}
-                <div className="flex-1 h-12 flex items-center justify-between gap-1 px-1">
-                  {Array.from({ length: 26 }).map((_, i) => {
-                    const percent = (audioDuration || duration) > 0 ? (playbackTime / (audioDuration || duration)) * 100 : 0;
-                    const isPast = (i / 26) * 100 <= percent;
-                    return (
-                      <div 
-                        key={i} 
-                        className={cn(
-                          "w-1.5 rounded-full transition-all duration-150",
-                          isPast ? "bg-primary" : "bg-primary/20 dark:bg-primary/30",
-                          isPlaying ? "animate-pulse" : ""
-                        )}
-                        style={{ 
-                          height: isPlaying 
-                            ? `${Math.max(10, Math.sin(i * 0.6 + playbackTime * 6) * 26 + 15)}px` 
-                            : isPast ? '18px' : '10px'
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+          ))}
+        </div>
 
-              {/* Progress Slider and Accurate Time Counter */}
-              <div className="w-full space-y-1.5">
-                <input
-                  type="range"
-                  min="0"
-                  max={audioDuration || duration || 100}
-                  step="0.1"
-                  value={playbackTime}
-                  onChange={handleSeek}
-                  className="w-full h-2 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
-                />
-                <div className="flex justify-between items-center text-xs font-mono text-muted-foreground px-0.5">
-                  <span className="font-semibold text-foreground/80">{formatTime(playbackTime)}</span>
-                  <span>{formatTime(audioDuration || duration)}</span>
-                </div>
-              </div>
-              
-              <div className="w-full flex justify-between items-center border-t border-border pt-4">
-                <span className="text-xs font-medium text-primary flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full">
-                  <Volume2 className="w-3.5 h-3.5" />
-                  <span>{t('step3.audioReady')}</span>
-                </span>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5" onClick={handleDelete}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                  {t('step3.rerecord')}
-                </Button>
-              </div>
+        {/* Audio ready (record / upload) */}
+        {value.mode !== 'drive' && value.file && value.blobUrl && (
+          <div className="space-y-4 rounded-2xl border border-border bg-background p-4">
+            <AudioPlayer src={value.blobUrl} />
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                {t('step3.audioReady')} · <span dir="ltr">{mb(value.file.size)} MB</span>
+              </span>
+              <button type="button" onClick={() => onChange({ file: null, blobUrl: null })} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-3.5 w-3.5" />
+                {t('step3.rerecord')}
+              </button>
             </div>
-            
-            <audio 
-              ref={audioRef} 
-              src={voiceBlobUrl} 
-              preload="metadata"
-              className="hidden" 
-            />
           </div>
         )}
+
+        {value.mode === 'record' && !value.file && (
+          <div className="flex flex-col items-center py-4">
+            <p className="mb-6 max-w-sm text-center font-serif text-lg italic text-foreground/70">{t('step3.prompt')}</p>
+            <div className="relative">
+              {isRecording && <span className="absolute inset-0 animate-ping rounded-full bg-destructive/25" />}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                className={cn(
+                  'relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl transition active:scale-95',
+                  isRecording ? 'bg-destructive text-white' : 'bg-accent text-accent-foreground hover:brightness-105',
+                )}
+                aria-label={isRecording ? t('step3.stop') : t('step3.record')}
+                data-testid="button-record"
+              >
+                {isRecording ? <Square className="h-8 w-8 fill-current" /> : <Mic className="h-10 w-10" />}
+              </button>
+            </div>
+            <p className={cn('mt-5 font-mono text-sm tabular-nums', isRecording ? 'text-destructive' : 'text-muted-foreground')} dir="ltr">
+              {isRecording ? `${fmt(seconds)} / ${fmt(MAX_RECORD_SECONDS)}` : t('step3.tapToRecord')}
+            </p>
+          </div>
+        )}
+
+        {value.mode === 'upload' && !value.file && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-border px-6 py-10 text-center transition hover:border-primary/40 hover:bg-secondary/40"
+            data-testid="button-upload-audio"
+          >
+            <Upload className="mb-3 h-8 w-8 text-primary" />
+            <span className="font-semibold">{t('step3.upload')}</span>
+            <span className="mt-1 text-sm text-muted-foreground">{t('step3.uploadHint').replace('{max}', mb(maxBytes))}</span>
+          </button>
+        )}
+
+        {value.mode === 'drive' && (
+          <div className="space-y-3">
+            <label htmlFor="drive-link" className="text-sm font-semibold">
+              {t('step3.driveLabel')}
+            </label>
+            <input
+              id="drive-link"
+              dir="ltr"
+              inputMode="url"
+              value={value.driveLink}
+              onChange={(e) => onChange({ driveLink: e.target.value })}
+              placeholder="https://drive.google.com/file/d/…/view"
+              className={cn(
+                'h-12 w-full rounded-xl border bg-background px-4 font-mono text-sm outline-none transition focus:ring-4',
+                driveInvalid ? 'border-destructive focus:ring-destructive/10' : 'border-input focus:border-primary focus:ring-primary/10',
+              )}
+              data-testid="input-drive-link"
+            />
+            {driveInvalid && <p className="flex items-center gap-1.5 text-xs font-medium text-destructive"><AlertCircle className="h-3.5 w-3.5" />{t('step3.driveInvalid')}</p>}
+            {driveParsed && <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{driveParsed.kind === 'folder' ? t('step3.driveFolderOk') : t('step3.driveFileOk')}</p>}
+            <ol className="list-decimal space-y-1 rounded-xl bg-muted/60 px-8 py-3 text-xs leading-relaxed text-muted-foreground">
+              <li>{t('step3.driveHelp1')}</li>
+              <li>{t('step3.driveHelp2')}</li>
+              <li>{t('step3.driveHelp3')}</li>
+            </ol>
+          </div>
+        )}
+
+        {fileError && (
+          <p className="mt-4 flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive" data-testid="voice-error">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {fileError}
+          </p>
+        )}
+
+        <div className="mt-7 space-y-2">
+          <label htmlFor="parent-message" className="text-sm font-semibold">
+            {t('step3.writtenMessage')}
+          </label>
+          <textarea
+            id="parent-message"
+            value={value.message}
+            maxLength={600}
+            onChange={(e) => onChange({ message: e.target.value })}
+            placeholder={t('step3.writtenPlaceholder')}
+            className="min-h-[96px] w-full resize-none rounded-xl border border-input bg-background px-4 py-3 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+          />
+        </div>
       </div>
 
-      <div className="w-full max-w-md space-y-2 pt-4">
-        <label className="text-sm font-medium text-foreground ml-1">{t('step3.writtenMessage')}</label>
-        <Textarea 
-          value={parentMessage}
-          onChange={(e) => onChange({ parentMessage: e.target.value })}
-          placeholder={t('step3.writtenPlaceholder')}
-          className="min-h-[120px] rounded-2xl resize-none bg-white/50 dark:bg-black/50 backdrop-blur"
-        />
-      </div>
+      <input
+        type="file"
+        accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={(e) => {
+          setAudio(e.target.files?.[0] ?? null);
+          e.target.value = '';
+        }}
+        data-testid="input-audio"
+      />
 
-      <div className="flex gap-4 max-w-md mx-auto w-full pt-4">
-        <Button size="lg" variant="outline" className="w-1/3 rounded-full h-14" onClick={onBack}>
+      <div className="flex gap-3">
+        <button type="button" onClick={onBack} disabled={isRecording} className="h-14 w-1/3 rounded-full border border-border bg-card font-semibold transition hover:bg-secondary disabled:opacity-40">
           {t('common.back')}
-        </Button>
-        <Button 
-          size="lg" 
-          className="w-2/3 rounded-full h-14 text-lg" 
-          disabled={!voiceBlobUrl && !parentMessage}
+        </button>
+        <button
+          type="button"
           onClick={onNext}
+          disabled={!canContinue}
+          className="h-14 flex-1 rounded-full bg-primary text-base font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+          data-testid="button-finish"
         >
-          {t('common.next')}
-        </Button>
+          {t('step3.finish')}
+        </button>
       </div>
     </motion.div>
   );

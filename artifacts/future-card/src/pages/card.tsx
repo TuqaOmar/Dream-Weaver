@@ -1,380 +1,339 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRoute, Link } from 'wouter';
-import { useGetCard, getGetCardQueryKey } from '@workspace/api-client-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Download, Share2, Printer, Play, ArrowLeft, RefreshCw, LayoutDashboard } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useGetCard,
+  getGetCardQueryKey,
+  getListCardsQueryKey,
+  useUpdateCard,
+  useGenerateCardImage,
+} from '@workspace/api-client-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Download,
+  Printer,
+  Share2,
+  ExternalLink,
+  Copy,
+  Check,
+  HardDrive,
+  Globe,
+  Pencil,
+  Loader2,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import confetti from 'canvas-confetti';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
 import { MemoryFrame } from '@/components/MemoryFrame';
+import { VoicePlayer } from '@/components/VoicePlayer';
+import { FRAME_THEMES, type FrameTheme, loadTheme, saveTheme, themeLabel, themeSwatch, renderCardToCanvas } from '@/lib/frame';
+import { isDriveUrl, normalizeDriveLink, parseDriveLink, qrTargetFor } from '@/lib/drive';
+import { cn } from '@/lib/utils';
 
 export default function CardView() {
   const [, params] = useRoute('/card/:id');
   const id = params?.id;
-  const { t } = useLanguage();
-  
-  const { data: card, isLoading, refetch } = useGetCard(id!, { 
-    query: { 
-      enabled: !!id, 
+  const { t, language, isRTL } = useLanguage();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: card, isLoading, refetch } = useGetCard(id!, {
+    query: {
+      enabled: !!id,
       queryKey: getGetCardQueryKey(id!),
-      refetchInterval: (query) => query.state.data?.status === 'generating' ? 3000 : false 
-    } 
+      refetchInterval: (q) => (q.state.data?.status === 'generating' ? 2500 : false),
+    },
   });
 
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [isDownloading, setIsDownloading] = React.useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const updateCard = useUpdateCard();
+  const generateQr = useGenerateCardImage();
 
-  useEffect(() => {
-    if (card?.status === 'completed') {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#4A6FA5', '#C9855C', '#ffffff']
-      });
-    }
-  }, [card?.status]);
+  const [theme, setTheme] = useState<FrameTheme>(() => loadTheme(id));
+  const [downloading, setDownloading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [editingLink, setEditingLink] = useState(false);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [savingLink, setSavingLink] = useState(false);
 
-  const toggleAudio = () => {
-    if (!audioRef.current || !card?.voiceMessageUrl) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
+  useEffect(() => setTheme(loadTheme(id)), [id]);
+
+  const qrTarget = useMemo(() => (card ? qrTargetFor(card) : ''), [card]);
+  const opensDrive = !!card && isDriveUrl(card.voiceMessageUrl);
+  const photo = card?.childPhotoUrl || card?.aiImageUrl || null;
+  const Back = isRTL ? ArrowRight : ArrowLeft;
+
+  const pickTheme = (th: FrameTheme) => {
+    setTheme(th);
+    if (id) saveTheme(id, th);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadPhoto = async () => {
-    if (!memoryImageUrl || !card) return;
-    const link = document.createElement('a');
-    link.href = memoryImageUrl;
-    link.download = `${card.childName || 'child'}-photo.jpg`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Auto-delete the photo from the server for privacy
+  const copyLink = async () => {
     try {
-      await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
-      refetch(); // Refresh the card data so UI updates
-    } catch (e) {
-      console.error('Failed to delete photo after download:', e);
+      await navigator.clipboard.writeText(qrTarget);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast({ title: qrTarget });
     }
   };
 
-  const handleDownloadCard = async () => {
-    if (!memoryImageUrl || !card) return;
-    setIsDownloading(true);
-    try {
-      const canvas = document.createElement('canvas');
-      const width = 800;
-      const height = 1200;
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not supported');
-
-      const drawRound = (x: number, y: number, w: number, h: number, r: number) => {
-        ctx.beginPath();
-        if (typeof ctx.roundRect === 'function') {
-          ctx.roundRect(x, y, w, h, r);
-        } else {
-          ctx.moveTo(x + r, y);
-          ctx.arcTo(x + w, y, x + w, y + h, r);
-          ctx.arcTo(x + w, y + h, x, y + h, r);
-          ctx.arcTo(x, y + h, x, y, r);
-          ctx.arcTo(x, y, x + w, y, r);
-        }
-      };
-
-      // 1. Draw outer gradient background
-      ctx.save();
-      drawRound(0, 0, width, height, 38);
-      ctx.clip();
-
-      const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-      bgGrad.addColorStop(0, '#e957a5');
-      bgGrad.addColorStop(0.31, '#ffd04a');
-      bgGrad.addColorStop(0.58, '#76d5a5');
-      bgGrad.addColorStop(0.77, '#40c9d9');
-      bgGrad.addColorStop(1, '#ff7c88');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, height);
-
-      // 2. Draw white inner frame border
-      const padding = 36;
-      const innerW = width - padding * 2;
-      const innerH = height - padding * 2;
-      drawRound(padding, padding, innerW, innerH, 30);
-      ctx.fillStyle = '#fffdf8';
-      ctx.fill();
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.stroke();
-
-      // 3. Child image area
-      const imgPadding = 8;
-      const imgX = padding + imgPadding;
-      const imgY = padding + imgPadding;
-      const imgW = innerW - imgPadding * 2;
-      const imgH = innerH - imgPadding * 2;
-
-      ctx.save();
-      drawRound(imgX, imgY, imgW, imgH, 24);
-      ctx.clip();
-      ctx.fillStyle = '#efe3d7';
-      ctx.fillRect(imgX, imgY, imgW, imgH);
-
-      const childImg = new Image();
-      childImg.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        childImg.onload = resolve;
-        childImg.onerror = reject;
-        childImg.src = memoryImageUrl;
-      });
-
-      const hRatio = imgW / (childImg.naturalWidth || childImg.width);
-      const vRatio = imgH / (childImg.naturalHeight || childImg.height);
-      const ratio = Math.max(hRatio, vRatio);
-      const nw = (childImg.naturalWidth || childImg.width) * ratio;
-      const nh = (childImg.naturalHeight || childImg.height) * ratio;
-      const shiftX = (imgW - nw) / 2;
-      const shiftY = (imgH - nh) / 2;
-
-      ctx.drawImage(childImg, 0, 0, childImg.naturalWidth || childImg.width, childImg.naturalHeight || childImg.height, imgX + shiftX, imgY + shiftY, nw, nh);
-      ctx.restore();
-
-      // 4. Draw QR Code in bottom corner
-      if (card.qrCodeUrl) {
-        const qrSize = 190;
-        const qrX = padding + 16;
-        const qrY = height - padding - qrSize - 16;
-
-        ctx.save();
-        drawRound(qrX, qrY, qrSize, qrSize, 14);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = 'rgba(0,0,0,0.25)';
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetY = 4;
-        ctx.fill();
-        ctx.restore();
-
-        const qrImg = new Image();
-        qrImg.crossOrigin = 'anonymous';
-        await new Promise((resolve, reject) => {
-          qrImg.onload = resolve;
-          qrImg.onerror = reject;
-          qrImg.src = card.qrCodeUrl!;
-        });
-
-        const qrPad = 12;
-        ctx.drawImage(qrImg, qrX + qrPad, qrY + qrPad, qrSize - qrPad * 2, qrSize - qrPad * 2);
+  const share = async () => {
+    if (!card) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${t('memory.brand')} · ${card.childName}`, url: qrTarget });
+      } catch {
+        /* cancelled */
       }
+    } else {
+      copyLink();
+    }
+  };
 
-      ctx.restore();
-
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
+  const download = async () => {
+    if (!card || !photo) return;
+    setDownloading(true);
+    try {
+      const canvas = await renderCardToCanvas({
+        theme,
+        photoUrl: photo,
+        qrCodeUrl: card.qrCodeUrl,
+        childName: card.childName,
+        caption: t('frame.scanCaption'),
+        isRTL,
+      });
       const link = document.createElement('a');
-      link.download = `${card.childName || 'future-card'}-card.png`;
-      link.href = dataUrl;
+      link.download = `${card.childName || 'card'}-${theme}.png`;
+      link.href = canvas.toDataURL('image/png');
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      // Auto-delete the photo from the server for privacy
-      try {
-        await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
-        refetch(); // Refresh the card data so UI updates
-      } catch (e) {
-        console.error('Failed to delete photo after download:', e);
-      }
+      link.remove();
     } catch (err) {
-      console.error('Download card error:', err);
-      handleDownloadPhoto();
+      console.error(err);
+      toast({ title: t('error.genericTitle'), description: t('card.downloadFailed'), variant: 'destructive' });
     } finally {
-      setIsDownloading(false);
+      setDownloading(false);
     }
   };
 
-  const handleShare = async () => {
-    if (navigator.share && card) {
-      try {
-        await navigator.share({
-          title: `${t('memory.brand')} - ${card.childName}`,
-          text: `${t('card.shareMemoryTitle')}: ${card.childName}`,
-          url: `${window.location.origin}/listen/${card.id}`,
-        });
-      } catch (err) {
-        console.error("Error sharing", err);
-      }
-    } else {
-      navigator.clipboard.writeText(`${window.location.origin}/listen/${card?.id}`);
-      alert(t('common.linkCopied'));
+  const saveDriveLink = async () => {
+    if (!card) return;
+    const normalized = normalizeDriveLink(linkDraft);
+    if (!normalized) return;
+    setSavingLink(true);
+    try {
+      await updateCard.mutateAsync({ id: card.id, data: { voiceMessageUrl: normalized } });
+      await generateQr.mutateAsync({ id: card.id });
+      await refetch();
+      queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
+      setEditingLink(false);
+      setLinkDraft('');
+      toast({ title: t('card.linkSaved') });
+    } catch (e) {
+      toast({ title: t('error.genericTitle'), description: t('error.tryAgain'), variant: 'destructive' });
+    } finally {
+      setSavingLink(false);
     }
+  };
+
+  const deletePhoto = async () => {
+    if (!card || !confirm(t('card.deletePhotoConfirm'))) return;
+    await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
+    refetch();
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!card) {
-    return <div className="text-center py-20">{t('common.cardNotFound')}</div>;
+    return <div className="py-24 text-center text-muted-foreground">{t('common.cardNotFound')}</div>;
   }
 
-  const isGenerating = card.status === 'generating';
-  const memoryImageUrl = card.childPhotoUrl || card.aiImageUrl;
+  const generating = card.status === 'generating';
+  const draftParsed = parseDriveLink(linkDraft);
 
   return (
-    <div className="min-h-screen bg-background pt-6 pb-20 print:min-h-0 print:p-0 print:m-0 print:bg-white print-page-wrapper">
-      <div className="container mx-auto px-4 max-w-5xl print:max-w-none print:p-0 print:m-0 print:w-full">
-        <div className="flex items-center justify-between mb-8 print:hidden">
-          <Link href="/dashboard">
-            <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-4 h-4" /> {t('card.backDashboard')}
-            </Button>
+    <div className="bg-paper min-h-[calc(100dvh-4rem)] pb-20 pt-6 print:bg-white print:p-0 print-page-wrapper">
+      <div className="mx-auto max-w-6xl px-4 md:px-8 print:max-w-none print:p-0">
+        <div className="mb-8 flex items-center justify-between print:hidden">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <Back className="h-4 w-4" />
+            {t('card.backDashboard')}
           </Link>
-          <div className="flex gap-2">
-            <Link href="/create">
-              <Button variant="outline" className="gap-2">
-                <RefreshCw className="w-4 h-4" /> {t('card.createAnother')}
-              </Button>
-            </Link>
-          </div>
+          <Link href="/create" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-secondary">
+            <Plus className="h-4 w-4" />
+            {t('card.createAnother')}
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start print:block print:w-full print:m-0">
-          
-          {/* Main Card View */}
-          <div className="lg:col-span-3 print:w-full print:flex print:items-center print:justify-center">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-card rounded-[2.5rem] border shadow-2xl shadow-black/5 overflow-hidden print:shadow-none print:border-none print:bg-transparent print:rounded-none print:w-auto"
-            >
-              <div className="aspect-[2/3] relative bg-muted print:bg-transparent print:w-[130mm] print:max-w-[90vw] print:mx-auto print-card-frame">
-                {isGenerating ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-primary/5 gap-4">
-                    <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                     <p className="text-primary font-medium text-lg animate-pulse">{t('card.preparing')}</p>
-                  </div>
-                ) : memoryImageUrl ? (
-                  <MemoryFrame
-                    src={memoryImageUrl}
-                    alt={card.childName}
-                    qrCodeUrl={card.qrCodeUrl}
-                    className="h-full aspect-auto rounded-none shadow-none print:rounded-[1.8rem]"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
-                     {t('common.noImageGenerated')}
-                  </div>
-                )}
-                
-              </div>
-              
-              <div className="p-8 bg-card flex flex-col gap-6 print:hidden">
-                <div>
-                  <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{card.childName}</h1>
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,420px)_1fr] lg:gap-14 print:block">
+          {/* Card preview */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-[420px] print:max-w-none">
+            <div className="print-card-frame">
+              {photo ? (
+                <MemoryFrame src={photo} alt={card.childName} qrCodeUrl={card.qrCodeUrl} childName={card.childName} theme={theme} />
+              ) : (
+                <div className="flex aspect-[2/3] items-center justify-center rounded-[2rem] border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                  {t('common.noImageGenerated')}
                 </div>
-                {card.parentMessage && (
-                  <div className="text-lg italic font-serif text-foreground/80 leading-relaxed border-l-4 border-accent pl-6 py-2">
-                    "{card.parentMessage}"
-                  </div>
-                )}
-                
-                {card.voiceMessageUrl && (
-                  <div className="bg-muted/50 rounded-2xl p-4 flex items-center gap-4 print:hidden">
-                    <button
-                      onClick={toggleAudio}
-                      className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-105 transition-transform flex-shrink-0"
-                    >
-                      {isPlaying ? <span className="w-4 h-4 bg-current rounded-sm" /> : <Play className="w-6 h-6 ml-1 fill-current" />}
-                    </button>
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground mb-1">{t('card.playMessage')}</p>
-                      <div className="h-2 w-full bg-border rounded-full overflow-hidden">
-                        <div className={cn("h-full bg-primary transition-all duration-300 w-0", isPlaying && "w-full animate-pulse")} style={{ transitionDuration: '10s' }} />
-                      </div>
-                    </div>
-                    <audio ref={audioRef} src={card.voiceMessageUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-          
-          {/* Actions & QR Sidebar */}
-          <div className="lg:col-span-2 space-y-6 print:hidden">
-            <div className="bg-card border rounded-3xl p-6 shadow-sm">
-              <h3 className="font-serif text-xl font-medium mb-4">{t('card.shareMemoryTitle')}</h3>
-              
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <Button variant="outline" className="h-14 rounded-xl gap-2 text-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/50" onClick={handleShare} disabled={isGenerating}>
-                  <Share2 className="w-5 h-5" /> {t('card.shareLink')}
-                </Button>
-                <Button variant="outline" className="h-14 rounded-xl gap-2 text-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/50" onClick={handlePrint} disabled={isGenerating}>
-                  <Printer className="w-5 h-5" /> {t('card.print')}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="col-span-2 h-14 rounded-xl gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-md transition-all active:scale-[0.98]" 
-                  onClick={handleDownloadCard} 
-                  disabled={isGenerating || isDownloading}
-                >
-                  <Download className="w-5 h-5" />
-                  {isDownloading 
-                    ? (t('card.download') === 'تنزيل البطاقة (صورة PNG)' ? 'جاري تجهيز الصورة وتنزيلها...' : 'Generating image...') 
-                    : t('card.download')}
-                </Button>
-                <button
-                  type="button"
-                  onClick={handleDownloadPhoto}
-                  disabled={isGenerating}
-                  className="col-span-2 text-xs text-muted-foreground hover:text-primary underline-offset-4 hover:underline transition-colors text-center py-1"
-                >
-                  {t('card.downloadPhoto')}
-                </button>
-              </div>
-              
-              <div className="bg-muted rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-4 border border-border border-dashed">
-                {card.qrCodeUrl ? (
-                  <>
-                    <div className="bg-white p-2 rounded-xl shadow-sm">
-                      <img src={card.qrCodeUrl} alt={t('common.qrAlt')} className="w-40 h-40 mix-blend-multiply" />
-                    </div>
-                    <p className="text-sm text-muted-foreground font-medium">{t('card.scanToShare')}</p>
-                  </>
-                ) : (
-                  <div className="w-40 h-40 bg-background/50 rounded-xl flex items-center justify-center text-muted-foreground text-sm">
-                    {isGenerating ? t('common.generatingQr') : t('common.noQr')}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-            
-            <div className="bg-primary/5 border border-primary/10 rounded-3xl p-6">
-              <h3 className="font-serif text-xl font-medium mb-2 text-primary">{t('card.storageTitle')}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{t('card.storageDescription')}</p>
-              <Link href="/dashboard">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 rounded-xl">
-                  <LayoutDashboard className="w-4 h-4 mr-2" /> {t('nav.dashboard')}
-                </Button>
-              </Link>
-            </div>
-          </div>
 
+            <div className="mt-6 print:hidden">
+              <p className="mb-2.5 text-center text-xs font-semibold text-muted-foreground">{t('card.frameStyle')}</p>
+              <div className="flex justify-center gap-2" role="radiogroup" aria-label={t('card.frameStyle')}>
+                {FRAME_THEMES.map((th) => (
+                  <button
+                    key={th}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === th}
+                    onClick={() => pickTheme(th)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                      theme === th ? 'border-primary bg-card shadow-sm' : 'border-border text-muted-foreground hover:text-foreground',
+                    )}
+                    data-testid={`theme-${th}`}
+                  >
+                    <span className="h-4 w-4 rounded-full ring-1 ring-black/10" style={{ background: themeSwatch(th) }} />
+                    {themeLabel(th, language)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Side panel */}
+          <div className="min-w-0 space-y-5 print:hidden">
+            <div>
+              <span className="eyebrow">{t('card.ready')}</span>
+              <h1 className="mt-2 font-serif text-4xl font-semibold" data-testid="card-title">{card.childName}</h1>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={download}
+                disabled={generating || downloading || !photo}
+                className="col-span-2 flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50 sm:col-span-1"
+                data-testid="button-download"
+              >
+                {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+                {t('card.download')}
+              </button>
+              <button type="button" onClick={() => window.print()} disabled={generating} className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-border bg-card font-semibold transition hover:bg-secondary disabled:opacity-50">
+                <Printer className="h-5 w-5" />
+                {t('card.print')}
+              </button>
+              <button type="button" onClick={share} disabled={generating} className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-border bg-card font-semibold transition hover:bg-secondary disabled:opacity-50">
+                <Share2 className="h-5 w-5" />
+                {t('card.shareLink')}
+              </button>
+            </div>
+
+            {/* QR destination */}
+            <section className="rounded-3xl border border-border bg-card p-5 sm:p-6" data-testid="qr-destination">
+              <div className="flex items-start gap-4">
+                {card.qrCodeUrl ? (
+                  <img src={card.qrCodeUrl} alt={t('common.qrAlt')} className="h-24 w-24 shrink-0 rounded-xl border border-border bg-white p-1.5 [image-rendering:pixelated]" />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
+                    {generating ? <Loader2 className="h-5 w-5 animate-spin" /> : t('common.noQr')}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 space-y-2">
+                  <h2 className="font-semibold">{t('card.qrOpens')}</h2>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+                      opensDrive ? 'bg-emerald-50 text-emerald-800' : 'bg-secondary text-secondary-foreground',
+                    )}
+                    data-testid="qr-destination-kind"
+                  >
+                    {opensDrive ? <HardDrive className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+                    {opensDrive ? 'Google Drive' : t('card.listenPage')}
+                  </span>
+                  <p className="truncate font-mono text-xs text-muted-foreground" dir="ltr" title={qrTarget} data-testid="qr-target">
+                    {qrTarget}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <a href={qrTarget} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold hover:bg-secondary/70">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      {t('card.testLink')}
+                    </a>
+                    <button type="button" onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold hover:bg-secondary/70">
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? t('common.copied') : t('common.copy')}
+                    </button>
+                    <button type="button" onClick={() => setEditingLink((v) => !v)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-secondary" data-testid="button-edit-link">
+                      <Pencil className="h-3.5 w-3.5" />
+                      {opensDrive ? t('card.changeDrive') : t('card.useDrive')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {editingLink && (
+                <div className="mt-5 space-y-2 border-t border-border pt-5">
+                  <label htmlFor="edit-drive" className="text-sm font-semibold">{t('step3.driveLabel')}</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="edit-drive"
+                      dir="ltr"
+                      value={linkDraft}
+                      onChange={(e) => setLinkDraft(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/…/view"
+                      className="h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 font-mono text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      data-testid="input-edit-drive"
+                    />
+                    <button
+                      type="button"
+                      disabled={!draftParsed || savingLink}
+                      onClick={saveDriveLink}
+                      className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                      data-testid="button-save-drive"
+                    >
+                      {savingLink && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {t('common.save')}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t('card.driveEditHint')}</p>
+                </div>
+              )}
+            </section>
+
+            {/* Voice + message */}
+            {(card.voiceMessageUrl || card.parentMessage) && (
+              <section className="space-y-4 rounded-3xl border border-border bg-card p-5 sm:p-6">
+                <h2 className="font-semibold">{t('card.playMessage')}</h2>
+                {card.voiceMessageUrl && <VoicePlayer url={card.voiceMessageUrl} />}
+                {card.parentMessage && (
+                  <blockquote className="border-s-2 border-accent ps-4 font-serif text-lg italic leading-relaxed text-foreground/80">
+                    {card.parentMessage}
+                  </blockquote>
+                )}
+              </section>
+            )}
+
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span>{t('card.printTip')}</span>
+              {card.childPhotoUrl && (
+                <button type="button" onClick={deletePhoto} className="inline-flex items-center gap-1 underline-offset-4 hover:text-destructive hover:underline">
+                  <Trash2 className="h-3 w-3" />
+                  {t('card.deletePhoto')}
+                </button>
+              )}
+            </p>
+          </div>
         </div>
       </div>
     </div>

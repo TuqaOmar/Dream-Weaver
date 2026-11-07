@@ -48,6 +48,16 @@ for (const p of ['/api/healthz', '/api/config', '/api/cards/stats/summary']) {
   log(`GET ${p}`, r.status === 200, `${r.status} ${r.text.slice(0, 300)}`);
 }
 
+{
+  const r = await api('/api/cards', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ childName: '__live-check__' }) });
+  log('POST /api/cards (database write)', r.status === 201, `${r.status} ${r.text.slice(0, 500)}`);
+  try { const c = JSON.parse(r.text); if (c.id) await api(`/api/cards/${c.id}`, { method: 'DELETE' }); } catch {}
+  const l = await api('/api/cards');
+  log('GET /api/cards (database read)', l.status === 200, `${l.status} ${l.text.slice(0, 200)}`);
+  const lst = await api('/listen/00000000-0000-0000-0000-000000000000');
+  log('deep link /listen/:id serves the app', lst.status === 200, lst.status);
+}
+
 // ---------------------------------------------------------------- UI
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['microphone'] });

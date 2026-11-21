@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { MotionConfig } from 'framer-motion';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { Navigation } from '@/components/Navigation';
 
@@ -48,12 +49,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        {/* Honour the visitor's "reduce motion" setting for every framer-motion animation. */}
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </MotionConfig>
       </LanguageProvider>
     </QueryClientProvider>
   );

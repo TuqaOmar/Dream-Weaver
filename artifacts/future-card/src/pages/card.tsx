@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ownerHeaders } from '@/lib/owner';
 import { MemoryFrame } from '@/components/MemoryFrame';
 import { VoicePlayer } from '@/components/VoicePlayer';
+import { ConfettiBurst, CELEBRATE_KEY } from '@/components/Confetti';
 import { FRAME_THEMES, type FrameTheme, loadTheme, saveTheme, themeLabel, themeSwatch, renderCardToCanvas } from '@/lib/frame';
 import { isDriveUrl, normalizeDriveLink, parseDriveLink, qrTargetFor } from '@/lib/drive';
 import { cn } from '@/lib/utils';
@@ -60,6 +61,20 @@ export default function CardView() {
   const [savingLink, setSavingLink] = useState(false);
 
   useEffect(() => setTheme(loadTheme(id)), [id]);
+
+  // Celebrate once when the wizard has just finished this card.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!id) return;
+    try {
+      if (sessionStorage.getItem(CELEBRATE_KEY) === id) {
+        sessionStorage.removeItem(CELEBRATE_KEY);
+        setCelebrate(true);
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, [id]);
 
   const qrTarget = useMemo(() => (card ? qrTargetFor(card) : ''), [card]);
   const opensDrive = !!card && isDriveUrl(card.voiceMessageUrl);
@@ -163,6 +178,7 @@ export default function CardView() {
 
   return (
     <div className="bg-paper min-h-[calc(100dvh-4rem)] pb-20 pt-6 print:bg-white print:p-0 print-page-wrapper">
+      {celebrate && <ConfettiBurst onDone={() => setCelebrate(false)} />}
       <div className="mx-auto max-w-6xl px-4 md:px-8 print:max-w-none print:p-0">
         <div className="mb-8 flex items-center justify-between print:hidden">
           <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -178,15 +194,21 @@ export default function CardView() {
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,420px)_1fr] lg:gap-14 print:block">
           {/* Card preview */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-[420px] print:max-w-none">
-            <div className="print-card-frame">
-              {photo ? (
-                <MemoryFrame src={photo} alt={card.childName} qrCodeUrl={card.qrCodeUrl} childName={card.childName} theme={theme} />
-              ) : (
-                <div className="flex aspect-[2/3] items-center justify-center rounded-[2rem] border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                  {t('common.noImageGenerated')}
-                </div>
-              )}
-            </div>
+            <motion.div
+              initial={{ scale: 0.82, rotate: isRTL ? 7 : -7, y: 24 }}
+              animate={{ scale: 1, rotate: 0, y: 0 }}
+              transition={{ type: 'spring', stiffness: 230, damping: 16, delay: 0.05 }}
+            >
+              <div className="print-card-frame">
+                {photo ? (
+                  <MemoryFrame src={photo} alt={card.childName} qrCodeUrl={card.qrCodeUrl} childName={card.childName} theme={theme} />
+                ) : (
+                  <div className="flex aspect-[2/3] items-center justify-center rounded-[2rem] border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                    {t('common.noImageGenerated')}
+                  </div>
+                )}
+              </div>
+            </motion.div>
 
             <div className="mt-6 print:hidden">
               <p className="mb-2.5 text-center text-xs font-semibold text-muted-foreground">{t('card.frameStyle')}</p>

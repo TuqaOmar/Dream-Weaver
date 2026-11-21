@@ -77,15 +77,28 @@ export default function ListenPublicView() {
 
   return shell(
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full text-center">
-      <div className="mx-auto mb-6 h-36 w-36 overflow-hidden rounded-full p-1 shadow-2xl" style={{ background: 'linear-gradient(135deg,#ef5fa7,#ffd04a,#5fd3a5,#3fc6dc)' }}>
-        <div className="relative h-full w-full overflow-hidden rounded-full bg-[#efe6dc]">
-          {photo && (
-            <>
-              <img src={photo} alt={card.childName} className="relative h-full w-full object-cover" />
-            </>
-          )}
+      <motion.div
+        className="relative mx-auto mb-6 h-36 w-36"
+        initial={{ scale: 0.7 }}
+        animate={{ scale: 1 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 14, delay: 0.1 }}
+      >
+        <span
+          aria-hidden="true"
+          className="animate-breathe pointer-events-none absolute -inset-4 rounded-full blur-xl"
+          style={{ background: 'conic-gradient(from 120deg,#ef5fa7,#ffd04a,#5fd3a5,#3fc6dc,#ef5fa7)' }}
+        />
+        <span aria-hidden="true" className="animate-breathe pointer-events-none absolute -inset-2 rounded-full border border-white/25 [animation-delay:0.4s]" />
+        <div className="relative h-full w-full overflow-hidden rounded-full p-1 shadow-2xl" style={{ background: 'linear-gradient(135deg,#ef5fa7,#ffd04a,#5fd3a5,#3fc6dc)' }}>
+          <div className="relative h-full w-full overflow-hidden rounded-full bg-[#efe6dc]">
+            {photo && (
+              <>
+                <img src={photo} alt={card.childName} className="relative h-full w-full object-cover" />
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
       <p className="eyebrow !text-[#e7b48f]">{t('listen.eyebrow')}</p>
       <h1 className="mt-2 font-serif text-3xl font-semibold" data-testid="listen-name">{card.childName}</h1>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCreateCard, useGenerateCardImage, getListCardsQueryKey } from '@workspace/api-client-react';
 import { Step1Photo } from '@/components/wizard/Step1Photo';
@@ -11,10 +11,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeDriveLink } from '@/lib/drive';
 import { compressImage } from '@/lib/image';
+import { CELEBRATE_KEY } from '@/components/Confetti';
+
+/* Wizard steps slide in from the reading direction (dir: +1 forward, -1 back). */
+const slide: Variants = {
+  enter: (dir: number) => ({ opacity: 0, x: dir * 56, scale: 0.98 }),
+  center: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 320, damping: 30, opacity: { duration: 0.2 } } },
+  exit: (dir: number) => ({ opacity: 0, x: dir * -56, scale: 0.98, transition: { duration: 0.18, ease: 'easeIn' } }),
+};
 
 export default function Create() {
   const [, setLocation] = useLocation();
-  const { language, t } = useLanguage();
+  const { language, t, isRTL } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createCard = useCreateCard();
@@ -22,6 +30,14 @@ export default function Create() {
 
   const [step, setStep] = useState(1);
   const [stage, setStage] = useState(0);
+  const [forward, setForward] = useState(true);
+  // In RTL the "next" step comes in from the left.
+  const dir = (forward ? 1 : -1) * (isRTL ? -1 : 1);
+
+  const goTo = (n: number) => {
+    setForward(n > step);
+    setStep(n);
+  };
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -77,6 +93,11 @@ export default function Create() {
       queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
 
       setStage(4);
+      try {
+        sessionStorage.setItem(CELEBRATE_KEY, card.id);
+      } catch {
+        /* storage unavailable: just skip the celebration */
+      }
       setTimeout(() => setLocation(`/card/${card.id}`), 450);
     } catch (error: any) {
       console.error(error);
@@ -98,19 +119,22 @@ export default function Create() {
       <div className="mx-auto max-w-3xl px-4">
         <WizardProgress currentStep={Math.min(step, 3)} />
         <div className="mt-10">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={dir} initial={false}>
             {step === 1 && (
-              <Step1Photo
-                key="step1"
-                photoUrl={photoUrl}
-                childName={childName}
-                onChildNameChange={setChildName}
-                onPhotoSelected={handlePhotoSelect}
-                onNext={() => setStep(2)}
-              />
+              <motion.div key="step1" custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
+                <Step1Photo
+                  photoUrl={photoUrl}
+                  childName={childName}
+                  onChildNameChange={setChildName}
+                  onPhotoSelected={handlePhotoSelect}
+                  onNext={() => goTo(2)}
+                />
+              </motion.div>
             )}
             {step === 2 && (
-              <Step3Voice key="step2" value={voice} onChange={(u) => setVoice((v) => ({ ...v, ...u }))} onNext={finish} onBack={() => setStep(1)} />
+              <motion.div key="step2" custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
+                <Step3Voice value={voice} onChange={(u) => setVoice((v) => ({ ...v, ...u }))} onNext={finish} onBack={() => goTo(1)} />
+              </motion.div>
             )}
           </AnimatePresence>
           {step === 3 && <Step4Magic stage={stage} usesDrive={voice.mode === 'drive'} />}

@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { Link } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Camera, Mic, QrCode, Printer, Smartphone, Palette } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemoryFrame } from '@/components/MemoryFrame';
 import { DEMO_QR } from '@/lib/demo-art';
+import { TiltCard } from '@/components/TiltCard';
 
 // Free photos from Unsplash (Unsplash License — free for commercial use).
 const unsplash = (id: string, w = 600) => `https://images.unsplash.com/photo-${id}?w=${w}&h=${Math.round(w * 1.5)}&fit=crop&crop=faces&auto=format&q=80`;
@@ -43,6 +45,75 @@ function Balloon({ className, color }: { className?: string; color: string }) {
   );
 }
 
+/* Headline words pop in one after another. */
+const headline: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
+};
+const headlineWord: Variants = {
+  hidden: { opacity: 0, y: 34, scale: 0.6, rotate: -8 },
+  show: { opacity: 1, y: 0, scale: 1, rotate: 0, transition: { type: 'spring', stiffness: 420, damping: 16 } },
+};
+
+/* Rainbow headline split into words; each word shows its own slice of one continuous gradient. */
+function PopHeadline({ text, isRTL }: { text: string; isRTL: boolean }) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const n = words.length;
+  return (
+    <motion.span variants={headline} initial="hidden" animate="show" className="inline">
+      {words.map((word, i) => {
+        const slot = isRTL ? n - 1 - i : i;
+        return (
+          <span key={`${i}-${word}`}>
+            <motion.span
+              variants={headlineWord}
+              className="text-rainbow inline-block"
+              style={{ backgroundSize: `${n * 100}% 100%`, backgroundPosition: `${n > 1 ? (slot / (n - 1)) * 100 : 0}% 0` }}
+            >
+              {word}
+            </motion.span>
+            {i < n - 1 ? ' ' : null}
+          </span>
+        );
+      })}
+    </motion.span>
+  );
+}
+
+/* Wraps a call-to-action with a breathing glow behind it. */
+function GlowWrap({ children, glow }: { children: ReactNode; glow: string }) {
+  return (
+    <span className="relative isolate inline-flex">
+      <span aria-hidden="true" className={`glow-pulse pointer-events-none absolute -inset-1.5 -z-10 rounded-full blur-lg ${glow}`} />
+      {children}
+    </span>
+  );
+}
+
+const stepCard: Variants = {
+  rest: { y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } },
+  hover: { y: -8, transition: { type: 'spring', stiffness: 300, damping: 16 } },
+};
+const stepIcon: Variants = {
+  rest: { y: 0, rotate: 0, scale: 1 },
+  hover: { y: [0, -12, 0, -5, 0], rotate: [0, -10, 8, -4, 0], scale: [1, 1.12, 1, 1.05, 1], transition: { duration: 0.7, ease: 'easeOut' } },
+};
+const stepBadge: Variants = {
+  rest: { scale: 1, rotate: 0 },
+  hover: { scale: 1.15, rotate: 12, transition: { type: 'spring', stiffness: 400, damping: 12 } },
+};
+
+/* Sample cards fan in from a tilt, then lift and straighten on hover. */
+const sampleHover: Variants = {
+  rest: { y: 0, rotate: 0, scale: 1, transition: { type: 'spring', stiffness: 260, damping: 20 } },
+  // `custom` is the card's resting tilt, so hovering cancels it and the card stands straight.
+  hover: (tilt: number) => ({ y: -14, scale: 1.06, rotate: -tilt, transition: { type: 'spring', stiffness: 260, damping: 16 } }),
+};
+const sampleShadow: Variants = {
+  rest: { opacity: 0 },
+  hover: { opacity: 1, transition: { duration: 0.25 } },
+};
+
 const STEP_STYLES = [
   { bg: 'bg-[#fff1f7]', ring: 'ring-[#fbcfe8]', icon: 'bg-[#f472b6]' },
   { bg: 'bg-[#f0f9ff]', ring: 'ring-[#bae6fd]', icon: 'bg-[#38bdf8]' },
@@ -69,29 +140,34 @@ export default function Home() {
       {/* Hero */}
       <section className="relative">
         <div className="bg-confetti pointer-events-none absolute inset-0 opacity-70" />
-        <Cloud className="animate-float-slow pointer-events-none absolute start-[6%] top-10 w-24 opacity-90" />
-        <Cloud className="animate-float pointer-events-none absolute end-[40%] top-24 hidden w-16 opacity-80 lg:block" />
-        <Star className="animate-wiggle pointer-events-none absolute end-[8%] top-14 w-8" />
-        <Heart className="animate-float pointer-events-none absolute start-[45%] bottom-16 hidden w-7 lg:block" />
-        <Star className="animate-float-slow pointer-events-none absolute start-[3%] bottom-24 w-6" color="#a78bfa" />
+        <Cloud className="animate-drift-slow pointer-events-none absolute start-[6%] top-10 w-24 opacity-90" />
+        <Cloud className="animate-drift pointer-events-none absolute end-[40%] top-24 hidden w-16 opacity-80 lg:block" />
+        <Star className="animate-twinkle pointer-events-none absolute end-[8%] top-14 w-8" />
+        <Heart className="animate-drift pointer-events-none absolute start-[45%] bottom-16 hidden w-7 lg:block" />
+        <Star className="animate-drift-slow pointer-events-none absolute start-[3%] bottom-24 w-6" color="#a78bfa" />
+        <Star className="animate-twinkle pointer-events-none absolute start-[38%] top-8 hidden w-5 [animation-delay:1.4s] lg:block" color="#38bdf8" />
+        <Heart className="animate-drift-slow pointer-events-none absolute end-[4%] bottom-28 hidden w-6 md:block" color="#fb923c" />
 
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-12 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pt-16">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-7">
             <span className="eyebrow">{t('hero.badge')}</span>
             <h1 className="text-balance text-5xl font-bold leading-[1.15] tracking-tight text-foreground md:text-6xl">
-              <span className="text-rainbow">{t('hero.title')}</span>
+              <PopHeadline key={t('hero.title')} text={t('hero.title')} isRTL={isRTL} />
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl">{t('hero.subtitle')}</p>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/create"
-                className="group inline-flex h-14 items-center gap-3 rounded-full bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#fb923c] px-8 text-lg font-bold text-white shadow-[0_14px_30px_-10px_rgba(236,72,153,0.6)] transition hover:scale-[1.03] active:scale-[0.98]"
-                data-testid="cta-create"
-              >
-                {t('hero.cta')}
-                <Arrow className="h-5 w-5 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />
-              </Link>
+              <GlowWrap glow="bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#fb923c]">
+                <Link
+                  href="/create"
+                  className="group relative inline-flex h-14 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#fb923c] px-8 text-lg font-bold text-white shadow-[0_14px_30px_-10px_rgba(236,72,153,0.6)] transition hover:scale-[1.03] active:scale-[0.98]"
+                  data-testid="cta-create"
+                >
+                  <span aria-hidden="true" className="shine-sweep" />
+                  <span className="relative">{t('hero.cta')}</span>
+                  <Arrow className="relative h-5 w-5 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />
+                </Link>
+              </GlowWrap>
               <Link
                 href="/dashboard"
                 className="inline-flex h-14 items-center rounded-full border-2 border-primary/20 bg-white/70 px-6 text-base font-semibold text-primary transition hover:bg-white"
@@ -108,18 +184,20 @@ export default function Home() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 24, rotate: isRTL ? 3 : -3 }}
-            animate={{ opacity: 1, y: 0, rotate: isRTL ? 3 : -3 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
+            initial={{ opacity: 0, y: 40, scale: 0.85, rotate: isRTL ? 10 : -10 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotate: isRTL ? 3 : -3 }}
+            transition={{ type: 'spring', stiffness: 170, damping: 15, delay: 0.25, opacity: { duration: 0.4, delay: 0.25 } }}
             className="relative mx-auto w-full max-w-[340px]"
           >
-            <div className="absolute -inset-12 -z-10 rounded-full bg-gradient-to-br from-[#fbcfe8] via-[#ddd6fe] to-[#bae6fd] opacity-70 blur-3xl" />
-            <Balloon className="animate-float absolute -top-16 -end-10 z-10 w-12" color="#f472b6" />
-            <Balloon className="animate-float-slow absolute -top-6 -end-20 z-0 w-10" color="#60a5fa" />
-            <Star className="animate-wiggle absolute -bottom-6 -start-8 z-10 w-12" />
-            <div className="animate-float-slow">
-              <MemoryFrame src={HERO_PHOTO} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
-            </div>
+            <div className="glow-pulse absolute -inset-12 -z-10 rounded-full bg-gradient-to-br from-[#fbcfe8] via-[#ddd6fe] to-[#bae6fd] opacity-70 blur-3xl" />
+            <Balloon className="animate-balloon absolute -top-16 -end-10 z-10 w-12" color="#f472b6" />
+            <Balloon className="animate-balloon-slow absolute -top-6 -end-20 z-0 w-10" color="#60a5fa" />
+            <Star className="animate-twinkle absolute -bottom-6 -start-8 z-10 w-12" />
+            <TiltCard>
+              <div className="animate-float-slow">
+                <MemoryFrame src={HERO_PHOTO} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
+              </div>
+            </TiltCard>
           </motion.div>
         </div>
       </section>
@@ -137,18 +215,30 @@ export default function Home() {
               return (
                 <motion.li
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className={`relative rounded-[2rem] p-7 ring-2 ${st.bg} ${st.ring} transition hover:-translate-y-1`}
+                  initial={{ opacity: 0, y: 48, scale: 0.85 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 18, delay: i * 0.14, opacity: { duration: 0.35, delay: i * 0.14 } }}
                 >
-                  <span className={`absolute end-6 top-6 flex h-9 w-9 items-center justify-center rounded-full ${st.icon} text-lg font-bold text-white`}>{i + 1}</span>
-                  <div className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${st.icon} text-white shadow-lg`}>
-                    <Icon className="h-7 w-7" />
-                  </div>
-                  <h3 className="mb-2 text-xl font-bold">{title}</h3>
-                  <p className="leading-relaxed text-muted-foreground">{body}</p>
+                  <motion.div
+                    initial="rest"
+                    animate="rest"
+                    whileHover="hover"
+                    variants={stepCard}
+                    className={`relative h-full rounded-[2rem] p-7 ring-2 ${st.bg} ${st.ring}`}
+                  >
+                    <motion.span
+                      variants={stepBadge}
+                      className={`absolute end-6 top-6 flex h-9 w-9 items-center justify-center rounded-full ${st.icon} text-lg font-bold text-white`}
+                    >
+                      {i + 1}
+                    </motion.span>
+                    <motion.div variants={stepIcon} className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${st.icon} text-white shadow-lg`}>
+                      <Icon className="h-7 w-7" />
+                    </motion.div>
+                    <h3 className="mb-2 text-xl font-bold">{title}</h3>
+                    <p className="leading-relaxed text-muted-foreground">{body}</p>
+                  </motion.div>
                 </motion.li>
               );
             })}
@@ -168,14 +258,20 @@ export default function Home() {
             {samples.map((s, i) => (
               <motion.figure
                 key={i}
-                initial={{ opacity: 0, y: 24, rotate: 0 }}
-                whileInView={{ opacity: 1, y: 0, rotate: s.tilt }}
-                whileHover={{ rotate: 0, scale: 1.04 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
+                initial={{ opacity: 0, y: 70, scale: 0.8, rotate: s.tilt * 5 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1, rotate: s.tilt }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ type: 'spring', stiffness: 150, damping: 15, delay: i * 0.18, opacity: { duration: 0.35, delay: i * 0.18 } }}
                 className="space-y-3"
               >
-                <MemoryFrame src={s.src} alt={s.label} qrCodeUrl={DEMO_QR} theme={s.theme} />
+                <motion.div initial="rest" animate="rest" whileHover="hover" variants={sampleHover} custom={s.tilt} className="relative">
+                  <motion.div
+                    aria-hidden="true"
+                    variants={sampleShadow}
+                    className="pointer-events-none absolute inset-[3%] rounded-[8%] shadow-[0_45px_70px_-15px_rgba(91,33,182,0.55)]"
+                  />
+                  <MemoryFrame src={s.src} alt={s.label} qrCodeUrl={DEMO_QR} theme={s.theme} />
+                </motion.div>
                 <figcaption className="text-center text-base font-semibold text-foreground/80">{s.label}</figcaption>
               </motion.figure>
             ))}
@@ -186,16 +282,23 @@ export default function Home() {
       {/* CTA band */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-8">
         <div className="relative flex flex-col items-start justify-between gap-6 overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#fb923c] px-8 py-12 text-white md:flex-row md:items-center md:px-12">
-          <Star className="animate-wiggle absolute end-[30%] top-4 w-8 opacity-80" color="#fff" />
-          <Heart className="animate-float absolute bottom-4 start-[45%] w-7 opacity-70" color="#fff" />
+          <Star className="animate-twinkle absolute end-[30%] top-4 w-8 opacity-80" color="#fff" />
+          <Heart className="animate-drift absolute bottom-4 start-[45%] w-7 opacity-70" color="#fff" />
           <div className="relative space-y-2">
             <h2 className="text-3xl font-bold md:text-4xl">{t('home.band.title')}</h2>
             <p className="text-lg text-white/85">{t('home.band.body')}</p>
           </div>
-          <Link href="/create" className="relative inline-flex h-14 shrink-0 items-center gap-2 rounded-full bg-white px-8 text-lg font-bold text-[#7c3aed] shadow-lg transition hover:scale-[1.04]">
-            {t('hero.cta')}
-            <Arrow className="h-5 w-5" />
-          </Link>
+          <GlowWrap glow="bg-white/70">
+            <Link href="/create" className="relative inline-flex h-14 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-white px-8 text-lg font-bold text-[#7c3aed] shadow-lg transition hover:scale-[1.04]">
+              <span
+                aria-hidden="true"
+                className="shine-sweep"
+                style={{ background: 'linear-gradient(105deg, transparent 30%, rgba(236,72,153,0.22) 48%, rgba(139,92,246,0.12) 56%, transparent 70%)' }}
+              />
+              <span className="relative">{t('hero.cta')}</span>
+              <Arrow className="relative h-5 w-5" />
+            </Link>
+          </GlowWrap>
         </div>
       </section>
 

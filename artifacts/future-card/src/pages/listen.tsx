@@ -23,7 +23,15 @@ export default function ListenPublicView() {
   });
 
   useEffect(() => {
-    if (card?.language === 'en' || card?.language === 'ar') setLanguage(card.language);
+    // Show the card in its own language only for visitors who never picked
+    // one, so scanning a card doesn't change the creator's saved language.
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem('lang');
+    } catch {
+      /* storage unavailable */
+    }
+    if (!saved && (card?.language === 'en' || card?.language === 'ar')) setLanguage(card.language);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.language]);
 

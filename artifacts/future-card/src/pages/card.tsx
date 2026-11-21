@@ -46,6 +46,8 @@ export default function CardView() {
       enabled: !!id,
       queryKey: getGetCardQueryKey(id!),
       refetchInterval: (q) => (q.state.data?.status === 'generating' ? 2500 : false),
+      // a missing / not-yours card is final: show "not found" right away
+      retry: (count, err) => (err as { status?: number } | null)?.status !== 404 && count < 2,
     },
   });
 

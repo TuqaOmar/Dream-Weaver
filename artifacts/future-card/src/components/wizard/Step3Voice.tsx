@@ -84,7 +84,7 @@ export function Step3Voice({ value, onChange, onNext, onBack }: Props) {
       const mimeType = types.find((tp) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(tp)) || '';
       let rec: MediaRecorder;
       try {
-        rec = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 64000 });
+        rec = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 32000 });
       } catch {
         rec = new MediaRecorder(stream);
       }

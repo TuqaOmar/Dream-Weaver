@@ -92,9 +92,15 @@ export default function Dashboard() {
               return (
                 <motion.article
                   key={card.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(idx, 8) * 0.04 }}
+                  initial={{ opacity: 0, y: 28, scale: 0.88 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 260,
+                    damping: 18,
+                    delay: Math.min(idx, 8) * 0.07,
+                    opacity: { duration: 0.3, delay: Math.min(idx, 8) * 0.07 },
+                  }}
                   className="group"
                 >
                   <Link href={`/card/${card.id}`} className="block transition-transform duration-300 group-hover:-translate-y-1">

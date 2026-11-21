@@ -140,8 +140,8 @@ export default function Dashboard() {
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary">
               <ImageIcon className="h-7 w-7" />
             </div>
-            <h2 className="mb-2 font-serif text-2xl font-semibold">{t('dashboard.empty')}</h2>
-            <p className="mx-auto mb-8 max-w-md text-muted-foreground">{t('dashboard.emptyDescription')}</p>
+            <h2 className="mb-2 font-serif text-2xl font-semibold">{debounced ? t('dashboard.noResults') : t('dashboard.empty')}</h2>
+            <p className="mx-auto mb-8 max-w-md text-muted-foreground">{debounced ? t('dashboard.noResultsDescription') : t('dashboard.emptyDescription')}</p>
             <Link href="/create" className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground">
               <Plus className="h-4 w-4" />
               {t('nav.create')}

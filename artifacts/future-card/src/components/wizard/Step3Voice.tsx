@@ -65,6 +65,10 @@ export function Step3Voice({ value, onChange, onNext, onBack }: Props) {
 
   const setAudio = (file: File | null) => {
     setFileError(null);
+    if (file && !(file.type.startsWith('audio/') || file.type.startsWith('video/') || /\.(m4a|mp3|wav|ogg|oga|webm|aac|amr|3gp|caf|opus)$/i.test(file.name))) {
+      setFileError(t('step3.notAudio'));
+      return;
+    }
     if (file && file.size > maxBytes) {
       setFileError(t('step3.tooLarge').replace('{size}', mb(file.size)).replace('{max}', mb(maxBytes)));
       return;

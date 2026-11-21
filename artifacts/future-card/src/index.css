@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -51,51 +51,51 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE — "keepsake stationery": warm paper, deep ink, terracotta */
+/* LIGHT MODE — "playroom": warm cream, candy colours, rounded type */
 :root {
-  --button-outline: rgba(28, 35, 51, 0.12);
-  --badge-outline: rgba(28, 35, 51, 0.06);
+  --button-outline: rgba(76, 29, 149, 0.12);
+  --badge-outline: rgba(76, 29, 149, 0.06);
 
   --opaque-button-border-intensity: -8;
 
-  --elevate-1: rgba(28, 35, 51, 0.03);
-  --elevate-2: rgba(28, 35, 51, 0.07);
+  --elevate-1: rgba(76, 29, 149, 0.03);
+  --elevate-2: rgba(76, 29, 149, 0.07);
 
-  --background: 38 38% 97%;
-  --foreground: 224 30% 15%;
-  --border: 34 22% 87%;
-  --input: 34 22% 85%;
-  --ring: 224 38% 30%;
+  --background: 36 100% 98%;
+  --foreground: 258 40% 22%;
+  --border: 270 45% 90%;
+  --input: 270 40% 88%;
+  --ring: 262 75% 60%;
 
-  --card: 40 50% 99%;
-  --card-foreground: 224 30% 15%;
-  --card-border: 34 22% 87%;
+  --card: 0 0% 100%;
+  --card-foreground: 258 40% 22%;
+  --card-border: 270 45% 90%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 224 30% 15%;
-  --popover-border: 34 22% 87%;
+  --popover-foreground: 258 40% 22%;
+  --popover-border: 270 45% 90%;
 
-  --primary: 224 34% 21%;
-  --primary-foreground: 40 45% 97%;
+  --primary: 262 72% 58%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 34 40% 93%;
-  --secondary-foreground: 224 30% 18%;
+  --secondary: 270 80% 95%;
+  --secondary-foreground: 262 55% 35%;
 
-  --muted: 36 28% 93%;
-  --muted-foreground: 224 10% 44%;
+  --muted: 36 70% 95%;
+  --muted-foreground: 258 15% 46%;
 
-  --accent: 20 55% 55%;
+  --accent: 340 85% 62%;
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 2 68% 50%;
+  --destructive: 2 75% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --app-font-sans: 'Inter', 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  --app-font-serif: 'Fraunces', 'Amiri', Georgia, serif;
-  --app-font-arabic: 'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;
+  --app-font-sans: 'Fredoka', 'Baloo Bhaijaan 2', system-ui, sans-serif;
+  --app-font-serif: 'Fredoka', 'Baloo Bhaijaan 2', system-ui, sans-serif;
+  --app-font-arabic: 'Baloo Bhaijaan 2', 'Fredoka', system-ui, sans-serif;
   --app-font-mono: ui-monospace, Menlo, monospace;
 
-  --radius: 0.9rem;
+  --radius: 1.25rem;
 }
 
 .dark {
@@ -147,8 +147,10 @@
     font-feature-settings: 'ss01', 'cv11';
   }
 
-  html[lang='ar'] .font-serif {
-    font-family: 'Amiri', 'Fraunces', serif;
+  html[lang='ar'] body,
+  html[lang='ar'] .font-serif,
+  html[lang='ar'] .font-sans {
+    font-family: 'Baloo Bhaijaan 2', 'Fredoka', system-ui, sans-serif;
     letter-spacing: 0;
   }
 
@@ -161,19 +163,56 @@
   .bg-paper {
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(1200px 600px at 100% -10%, hsl(var(--accent) / 0.10), transparent 60%),
-      radial-gradient(900px 500px at -10% 10%, hsl(224 60% 70% / 0.10), transparent 60%);
+      radial-gradient(700px 420px at 100% 0%, rgba(255, 182, 213, 0.45), transparent 60%),
+      radial-gradient(640px 420px at 0% 12%, rgba(186, 230, 253, 0.55), transparent 60%),
+      radial-gradient(620px 420px at 85% 55%, rgba(254, 240, 138, 0.35), transparent 60%),
+      radial-gradient(620px 460px at 5% 90%, rgba(187, 247, 208, 0.45), transparent 60%);
+  }
+  .bg-confetti {
+    background-image: radial-gradient(circle, rgba(139, 92, 246, 0.10) 1.6px, transparent 1.7px);
+    background-size: 26px 26px;
+  }
+  .text-rainbow {
+    background: linear-gradient(90deg, #f43f8e, #fb923c, #facc15, #22c55e, #0ea5e9, #8b5cf6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float 9s ease-in-out infinite;
+  }
+  .animate-wiggle {
+    animation: wiggle 4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float,
+    .animate-float-slow,
+    .animate-wiggle {
+      animation: none;
+    }
   }
   .text-balance {
     text-wrap: balance;
   }
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-accent;
+    @apply inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-accent;
   }
   html[lang='ar'] .eyebrow {
     letter-spacing: 0;
     font-size: 13px;
   }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
 }
 
 @media print {

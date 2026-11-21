@@ -81,8 +81,7 @@ export default function ListenPublicView() {
         <div className="relative h-full w-full overflow-hidden rounded-full bg-[#efe6dc]">
           {photo && (
             <>
-              <img src={photo} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-xl" />
-              <img src={photo} alt={card.childName} className="relative h-full w-full object-contain" />
+              <img src={photo} alt={card.childName} className="relative h-full w-full object-cover" />
             </>
           )}
         </div>

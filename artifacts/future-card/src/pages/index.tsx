@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Camera, Mic, QrCode, Printer, Smartphone, Palette } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemoryFrame } from '@/components/MemoryFrame';
-import { DEMO_PHOTO, DEMO_QR, DEMO_BIRTHDAY, DEMO_GRADUATION, DEMO_GRANDMA, DEMO_SCHOOL } from '@/lib/demo-art';
+import { DEMO_QR } from '@/lib/demo-art';
+
+const sample = (name: string) => `${import.meta.env.BASE_URL}samples/${name}.jpg`;
 import type { FrameTheme } from '@/lib/frame';
 
 /* Small decorative shapes that float around the page. */
@@ -56,12 +58,10 @@ export default function Home() {
   ];
 
   const samples: { src: string; theme: FrameTheme; label: string; tilt: number }[] = [
-    { src: DEMO_BIRTHDAY, theme: 'rainbow', label: t('home.sample1'), tilt: -3 },
-    { src: DEMO_GRADUATION, theme: 'navy', label: t('home.sample2'), tilt: 2 },
-    { src: DEMO_GRANDMA, theme: 'gold', label: t('home.sample3'), tilt: -2 },
-    { src: DEMO_SCHOOL, theme: 'rainbow', label: t('home.sample4'), tilt: 3 },
+    { src: sample('boy-smile'), theme: 'rainbow', label: t('home.sample1'), tilt: -3 },
+    { src: sample('boy-field'), theme: 'gold', label: t('home.sample3'), tilt: 2 },
+    { src: sample('boy-book'), theme: 'navy', label: t('home.sample4'), tilt: -2 },
   ];
-
   return (
     <div className="bg-paper overflow-hidden">
       {/* Hero */}
@@ -116,7 +116,7 @@ export default function Home() {
             <Balloon className="animate-float-slow absolute -top-6 -end-20 z-0 w-10" color="#60a5fa" />
             <Star className="animate-wiggle absolute -bottom-6 -start-8 z-10 w-12" />
             <div className="animate-float-slow">
-              <MemoryFrame src={DEMO_PHOTO} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
+              <MemoryFrame src={sample('boy-book')} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
             </div>
           </motion.div>
         </div>
@@ -162,7 +162,7 @@ export default function Home() {
             <h2 className="text-3xl font-bold md:text-4xl">{t('home.samples.title')}</h2>
             <p className="text-lg text-muted-foreground">{t('home.samples.body')}</p>
           </div>
-          <div className="grid grid-cols-2 gap-6 md:gap-8 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 md:grid-cols-3 md:gap-10">
             {samples.map((s, i) => (
               <motion.figure
                 key={i}

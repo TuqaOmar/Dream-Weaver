@@ -5,7 +5,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MemoryFrame } from '@/components/MemoryFrame';
 import { DEMO_QR } from '@/lib/demo-art';
 
-const sample = (name: string) => `${import.meta.env.BASE_URL}samples/${name}.jpg`;
+// Free photos from Unsplash (Unsplash License — free for commercial use).
+const unsplash = (id: string, w = 600) => `https://images.unsplash.com/photo-${id}?w=${w}&h=${Math.round(w * 1.5)}&fit=crop&crop=faces&auto=format&q=80`;
+const HERO_PHOTO = unsplash('1621878166843-d060a5ff51ea', 900);
 import type { FrameTheme } from '@/lib/frame';
 
 /* Small decorative shapes that float around the page. */
@@ -58,9 +60,9 @@ export default function Home() {
   ];
 
   const samples: { src: string; theme: FrameTheme; label: string; tilt: number }[] = [
-    { src: sample('boy-smile'), theme: 'rainbow', label: t('home.sample1'), tilt: -3 },
-    { src: sample('boy-field'), theme: 'gold', label: t('home.sample3'), tilt: 2 },
-    { src: sample('boy-book'), theme: 'navy', label: t('home.sample4'), tilt: -2 },
+    { src: unsplash('1707745736009-21c1af000560'), theme: 'rainbow', label: t('home.sample1'), tilt: -3 },
+    { src: unsplash('1793984490614-3a94aea1cb36'), theme: 'gold', label: t('home.sample3'), tilt: 2 },
+    { src: unsplash('1744973004605-118c8be37da4'), theme: 'navy', label: t('home.sample4'), tilt: -2 },
   ];
   return (
     <div className="bg-paper overflow-hidden">
@@ -116,7 +118,7 @@ export default function Home() {
             <Balloon className="animate-float-slow absolute -top-6 -end-20 z-0 w-10" color="#60a5fa" />
             <Star className="animate-wiggle absolute -bottom-6 -start-8 z-10 w-12" />
             <div className="animate-float-slow">
-              <MemoryFrame src={sample('boy-book')} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
+              <MemoryFrame src={HERO_PHOTO} alt="" qrCodeUrl={DEMO_QR} theme="rainbow" />
             </div>
           </motion.div>
         </div>

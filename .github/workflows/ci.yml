@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      LIVE_URL: https://dream-weaver-gamma-lime.vercel.app
+      LIVE_URL: https://hamsat-thikra.vercel.app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

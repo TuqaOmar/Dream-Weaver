@@ -1,7 +1,7 @@
 import { Router } from "express";
 type Request = any;
 type Response = any;
-import { db, cardsTable, eq, ilike, or, sql, dbErrorMessage } from "../../../../lib/db/src/index.js";
+import { db, cardsTable, eq, ilike, or, and, sql, dbErrorMessage } from "../../../../lib/db/src/index.js";
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import os from "os";
@@ -64,12 +64,42 @@ function resolvePublicDomain(req: Request): string {
   return `http://${getLocalIp()}:8080`;
 }
 
+// ---------------------------------------------------------------------------
+// Ownership: every browser keeps a random secret key and sends it as
+// "Authorization: Bearer <key>". Cards are listed / edited / deleted only by
+// the browser that created them. The public listen page needs no key.
+// ---------------------------------------------------------------------------
+function ownerKeyOf(req: Request): string | null {
+  const h = String(req.get?.("authorization") || "");
+  const m = h.match(/^Bearer\s+([A-Za-z0-9_-]{16,128})$/);
+  return m ? m[1] : null;
+}
+
+/** Strip the owner key before sending a card to a client. */
+function publicView<T extends { ownerKey?: unknown }>(card: T): Omit<T, "ownerKey"> {
+  const { ownerKey: _omit, ...rest } = card;
+  return rest;
+}
+
+/** Loads a card the caller owns, or sends 404 and returns null. */
+async function loadOwnedCard(req: Request, res: Response) {
+  const key = ownerKeyOf(req);
+  const rows = await db.select().from(cardsTable).where(eq(cardsTable.id, String(req.params.id))).limit(1);
+  const card = rows[0];
+  if (!card || !key || card.ownerKey !== key) {
+    res.status(404).json({ error: "Card not found" });
+    return null;
+  }
+  return card;
+}
+
 const router = Router();
 
 // GET /api/cards/stats/summary — MUST be before /:id
 router.get("/cards/stats/summary", async (req: Request, res: Response) => {
   try {
-    const allCards = await db.select().from(cardsTable);
+    const key = ownerKeyOf(req);
+    const allCards = key ? (await db.select().from(cardsTable).where(eq(cardsTable.ownerKey, key))).map(publicView) : [];
     const total = allCards.length;
     const completed = allCards.filter((c) => c.status === "completed").length;
     const drafts = allCards.filter((c) => c.status === "draft").length;
@@ -135,24 +165,17 @@ router.get("/cards/public/:id", async (req: Request, res: Response) => {
 router.get("/cards", async (req: Request, res: Response) => {
   try {
     const { search } = req.query as { search?: string };
-    let cards;
-    if (search && search.trim()) {
-      cards = await db
-        .select()
-        .from(cardsTable)
-        .where(
-          or(
-            ilike(cardsTable.childName, `%${search}%`),
-            ilike(cardsTable.profession, `%${search}%`),
-          ),
-        )
-        .orderBy(sql`${cardsTable.createdAt} desc`);
-    } else {
-      cards = await db
-        .select()
-        .from(cardsTable)
-        .orderBy(sql`${cardsTable.createdAt} desc`);
+    const key = ownerKeyOf(req);
+    if (!key) {
+      res.json([]);
+      return;
     }
+    const mine = eq(cardsTable.ownerKey, key);
+    const where =
+      search && search.trim()
+        ? and(mine, or(ilike(cardsTable.childName, `%${search}%`), ilike(cardsTable.profession, `%${search}%`)))
+        : mine;
+    const cards = (await db.select().from(cardsTable).where(where).orderBy(sql`${cardsTable.createdAt} desc`)).map(publicView);
     res.json(cards);
   } catch (err) {
     req.log.error({ err }, "Failed to list cards");
@@ -202,12 +225,13 @@ router.post("/cards", async (req: Request, res: Response) => {
         parentMessage: parentMessage ? String(parentMessage).slice(0, 2000) : null,
         status: "draft",
         language: safeLanguage,
+        ownerKey: ownerKeyOf(req),
         createdAt: now,
         updatedAt: now,
       })
       .returning();
 
-    res.status(201).json(card);
+    res.status(201).json(publicView(card));
   } catch (err: any) {
     console.error("Failed to create card", err);
     res.status(500).json({ error: "Failed to create card", details: dbErrorMessage(err) });
@@ -228,7 +252,7 @@ router.get("/cards/:id/public", async (req: Request, res: Response) => {
       return;
     }
 
-    res.json(card[0]);
+    res.json(publicView(card[0]));
   } catch (err) {
     req.log.error({ err }, "Failed to get public card");
     res.status(500).json({ error: "Failed to get public card", details: dbErrorMessage(err) });
@@ -238,18 +262,10 @@ router.get("/cards/:id/public", async (req: Request, res: Response) => {
 // GET /api/cards/:id
 router.get("/cards/:id", async (req: Request, res: Response) => {
   try {
-    const card = await db
-      .select()
-      .from(cardsTable)
-      .where(eq(cardsTable.id, String(req.params.id)))
-      .limit(1);
+    const owned = await loadOwnedCard(req, res);
+    if (!owned) return;
 
-    if (!card.length) {
-      res.status(404).json({ error: "Card not found" });
-      return;
-    }
-
-    res.json(card[0]);
+    res.json(publicView(owned));
   } catch (err) {
     req.log.error({ err }, "Failed to get card");
     res.status(500).json({ error: "Failed to get card", details: dbErrorMessage(err) });
@@ -259,16 +275,8 @@ router.get("/cards/:id", async (req: Request, res: Response) => {
 // PATCH /api/cards/:id
 router.patch("/cards/:id", async (req: Request, res: Response) => {
   try {
-    const existing = await db
-      .select()
-      .from(cardsTable)
-      .where(eq(cardsTable.id, String(req.params.id)))
-      .limit(1);
-
-    if (!existing.length) {
-      res.status(404).json({ error: "Card not found" });
-      return;
-    }
+    const owned = await loadOwnedCard(req, res);
+    if (!owned) return;
 
     const updates: Partial<typeof cardsTable.$inferInsert> = { updatedAt: new Date() };
     const body = req.body as Record<string, unknown>;
@@ -296,7 +304,7 @@ router.patch("/cards/:id", async (req: Request, res: Response) => {
       .where(eq(cardsTable.id, String(req.params.id)))
       .returning();
 
-    res.json(updated);
+    res.json(publicView(updated));
   } catch (err) {
     req.log.error({ err }, "Failed to update card");
     res.status(500).json({ error: "Failed to update card", details: dbErrorMessage(err) });
@@ -306,16 +314,8 @@ router.patch("/cards/:id", async (req: Request, res: Response) => {
 // DELETE /api/cards/:id
 router.delete("/cards/:id", async (req: Request, res: Response) => {
   try {
-    const existing = await db
-      .select()
-      .from(cardsTable)
-      .where(eq(cardsTable.id, String(req.params.id)))
-      .limit(1);
-
-    if (!existing.length) {
-      res.status(404).json({ error: "Card not found" });
-      return;
-    }
+    const owned = await loadOwnedCard(req, res);
+    if (!owned) return;
 
     await db.delete(cardsTable).where(eq(cardsTable.id, String(req.params.id)));
     res.status(204).send();
@@ -328,18 +328,8 @@ router.delete("/cards/:id", async (req: Request, res: Response) => {
 // DELETE /api/cards/:id/photo
 router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
   try {
-    const existing = await db
-      .select()
-      .from(cardsTable)
-      .where(eq(cardsTable.id, String(req.params.id)))
-      .limit(1);
-
-    if (!existing.length) {
-      res.status(404).json({ error: "Card not found" });
-      return;
-    }
-
-    const card = existing[0];
+    const owned = await loadOwnedCard(req, res);
+    if (!owned) return;
 
     const [updated] = await db
       .update(cardsTable)
@@ -347,7 +337,7 @@ router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
       .where(eq(cardsTable.id, String(req.params.id)))
       .returning();
 
-    res.json(updated);
+    res.json(publicView(updated));
   } catch (err) {
     req.log.error({ err }, "Failed to delete card photo");
     res.status(500).json({ error: "Failed to delete card photo", details: dbErrorMessage(err) });
@@ -357,16 +347,9 @@ router.delete("/cards/:id/photo", async (req: Request, res: Response) => {
 // POST /api/cards/:id/generate
 router.post("/cards/:id/generate", async (req: Request, res: Response) => {
   try {
-    const card = await db
-      .select()
-      .from(cardsTable)
-      .where(eq(cardsTable.id, String(req.params.id)))
-      .limit(1);
-
-    if (!card.length) {
-      res.status(404).json({ error: "Card not found" });
-      return;
-    }
+    const owned = await loadOwnedCard(req, res);
+    if (!owned) return;
+    const card = [owned];
 
     await db
       .update(cardsTable)
@@ -418,7 +401,7 @@ router.post("/cards/:id/generate", async (req: Request, res: Response) => {
       .where(eq(cardsTable.id, String(req.params.id)))
       .returning();
 
-    res.json(updated);
+    res.json(publicView(updated));
   } catch (err) {
     req.log.error({ err }, "Failed to generate card image");
     res.status(500).json({ error: "Failed to generate card image", details: dbErrorMessage(err) });

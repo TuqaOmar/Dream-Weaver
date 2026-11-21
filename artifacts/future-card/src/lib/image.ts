@@ -2,7 +2,7 @@
  * Resize + re-encode a photo in the browser so it stays well under the
  * serverless request limit while still printing sharply.
  */
-export function compressImage(file: File, maxSide = 1600, quality = 0.85): Promise<string> {
+export function compressImage(file: File, maxSide = 1400, quality = 0.82): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -25,8 +25,9 @@ export function compressImage(file: File, maxSide = 1600, quality = 0.85): Promi
       ctx.drawImage(img, 0, 0, width, height);
       let q = quality;
       let out = canvas.toDataURL('image/jpeg', q);
-      // keep the encoded photo below ~1 MB
-      while (out.length > 1_400_000 && q > 0.5) {
+      // keep the encoded photo small (~300 KB) to save database space;
+      // 1400 px is still sharp for a 10×15 cm print
+      while (out.length > 420_000 && q > 0.45) {
         q -= 0.1;
         out = canvas.toDataURL('image/jpeg', q);
       }

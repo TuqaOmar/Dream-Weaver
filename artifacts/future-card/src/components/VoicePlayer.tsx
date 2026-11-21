@@ -65,17 +65,25 @@ export function AudioPlayer({ src, className, tone = 'light' }: { src: string; c
 
   return (
     <div className={cn('flex items-center gap-4', className)} data-testid="audio-player">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={playing ? t('player.pause') : t('player.play')}
-        className={cn(
-          'flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-lg transition active:scale-95',
-          dark ? 'bg-[#f4e6cf] text-[#1c2333]' : 'bg-primary text-primary-foreground hover:bg-primary/90',
+      <span className="relative flex shrink-0">
+        {playing && (
+          <>
+            <span aria-hidden="true" className={cn('animate-ring-pulse pointer-events-none absolute inset-0 rounded-full', dark ? 'bg-[#f4e6cf]/40' : 'bg-primary/30')} />
+            <span aria-hidden="true" className={cn('animate-ring-pulse-delayed pointer-events-none absolute inset-0 rounded-full', dark ? 'bg-[#f4e6cf]/30' : 'bg-primary/20')} />
+          </>
         )}
-      >
-        {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className={'ms-0.5 h-6 w-6 fill-current'} />}
-      </button>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={playing ? t('player.pause') : t('player.play')}
+          className={cn(
+            'relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-lg transition active:scale-95',
+            dark ? 'bg-[#f4e6cf] text-[#1c2333]' : 'bg-primary text-primary-foreground hover:bg-primary/90',
+          )}
+        >
+          {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className={'ms-0.5 h-6 w-6 fill-current'} />}
+        </button>
+      </span>
       <div className="min-w-0 flex-1">
         <div className="flex h-10 cursor-pointer items-center gap-[3px]" onClick={seek} role="slider" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} tabIndex={0}>
           {BAR_HEIGHTS.map((h, i) => {

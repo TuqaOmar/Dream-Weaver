@@ -92,9 +92,15 @@ export default function Dashboard() {
               return (
                 <motion.article
                   key={card.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(idx, 8) * 0.04 }}
+                  initial={{ opacity: 0, y: 28, scale: 0.88 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 260,
+                    damping: 18,
+                    delay: Math.min(idx, 8) * 0.07,
+                    opacity: { duration: 0.3, delay: Math.min(idx, 8) * 0.07 },
+                  }}
                   className="group"
                 >
                   <Link href={`/card/${card.id}`} className="block transition-transform duration-300 group-hover:-translate-y-1">
@@ -134,8 +140,8 @@ export default function Dashboard() {
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary">
               <ImageIcon className="h-7 w-7" />
             </div>
-            <h2 className="mb-2 font-serif text-2xl font-semibold">{t('dashboard.empty')}</h2>
-            <p className="mx-auto mb-8 max-w-md text-muted-foreground">{t('dashboard.emptyDescription')}</p>
+            <h2 className="mb-2 font-serif text-2xl font-semibold">{debounced ? t('dashboard.noResults') : t('dashboard.empty')}</h2>
+            <p className="mx-auto mb-8 max-w-md text-muted-foreground">{debounced ? t('dashboard.noResultsDescription') : t('dashboard.emptyDescription')}</p>
             <Link href="/create" className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground">
               <Plus className="h-4 w-4" />
               {t('nav.create')}

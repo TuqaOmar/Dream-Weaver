@@ -92,6 +92,12 @@ export function ensureSchema(): Promise<void> {
           sql`CREATE INDEX IF NOT EXISTS cards_owner_key_idx ON cards (owner_key)`,
         ),
       )
+      // one-off clean-up: older cards stored the photo twice
+      .then(() =>
+        (instance.db as any).execute(
+          sql`UPDATE cards SET ai_image_url = NULL WHERE ai_image_url IS NOT NULL AND ai_image_url = child_photo_url`,
+        ),
+      )
       .then(() => undefined)
       .catch((err: unknown) => {
         schemaReady = null;

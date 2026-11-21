@@ -187,11 +187,69 @@
   .animate-wiggle {
     animation: wiggle 4s ease-in-out infinite;
   }
+  /* Decorations that drift around with a little rotation. */
+  .animate-drift {
+    animation: drift 7s ease-in-out infinite;
+  }
+  .animate-drift-slow {
+    animation: drift 11s ease-in-out infinite reverse;
+  }
+  .animate-twinkle {
+    animation: twinkle 3.2s ease-in-out infinite;
+  }
+  .animate-balloon {
+    transform-origin: 50% 100%;
+    animation: balloon 6.5s ease-in-out infinite;
+  }
+  .animate-balloon-slow {
+    transform-origin: 50% 100%;
+    animation: balloon 9s ease-in-out infinite reverse;
+  }
+  /* Soft light that sweeps across a button now and then. */
+  .shine-sweep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.15) 56%, transparent 70%);
+    transform: translateX(-130%);
+    animation: shine 4.2s ease-in-out infinite;
+    animation-delay: 1.2s;
+  }
+  /* Glow that breathes behind a button. */
+  .glow-pulse {
+    animation: glow-pulse 2.8s ease-in-out infinite;
+  }
+  .animate-breathe {
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+  .animate-ring-pulse {
+    animation: ring-pulse 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  }
+  .animate-ring-pulse-delayed {
+    animation: ring-pulse 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) 0.9s infinite;
+  }
+  .animate-soft-ping {
+    animation: ring-pulse 2.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  }
   @media (prefers-reduced-motion: reduce) {
     .animate-float,
     .animate-float-slow,
-    .animate-wiggle {
+    .animate-wiggle,
+    .animate-drift,
+    .animate-drift-slow,
+    .animate-twinkle,
+    .animate-balloon,
+    .animate-balloon-slow,
+    .shine-sweep,
+    .glow-pulse,
+    .animate-breathe,
+    .animate-ring-pulse,
+    .animate-ring-pulse-delayed,
+    .animate-soft-ping {
       animation: none;
+    }
+    .shine-sweep {
+      opacity: 0;
     }
   }
   .text-balance {
@@ -213,6 +271,35 @@
 @keyframes wiggle {
   0%, 100% { transform: rotate(-4deg); }
   50% { transform: rotate(4deg); }
+}
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(14px, -20px) rotate(7deg); }
+  66% { transform: translate(-10px, -9px) rotate(-5deg); }
+}
+@keyframes twinkle {
+  0%, 100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+  50% { transform: scale(1.28) rotate(10deg); opacity: 0.75; }
+}
+@keyframes balloon {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-24px) rotate(5deg); }
+}
+@keyframes shine {
+  0% { transform: translateX(-130%); }
+  35%, 100% { transform: translateX(130%); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.96); }
+  50% { opacity: 0.9; transform: scale(1.06); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.45; transform: scale(0.98); }
+  50% { opacity: 0.95; transform: scale(1.12); }
+}
+@keyframes ring-pulse {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.75); }
 }
 
 @media print {

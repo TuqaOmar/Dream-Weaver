@@ -21,14 +21,13 @@ export function MemoryFrame({
   src,
   alt,
   qrCodeUrl,
-  childName,
   theme = 'rainbow',
   className,
   showQr = true,
 }: MemoryFrameProps) {
   const { t } = useLanguage();
   const frameUrl = useMemo(() => frameSvgDataUrl(theme), [theme]);
-  const { photo, qrTile: q, name: n } = GEO;
+  const { photo, qrTile: q } = GEO;
 
   return (
     <div
@@ -55,39 +54,16 @@ export function MemoryFrame({
       >
         <img
           src={src}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full scale-[1.15] object-cover opacity-75 blur-2xl"
-          draggable={false}
-        />
-        <img
-          src={src}
           alt={alt}
-          className="relative z-10 h-full w-full object-contain"
+          className="h-full w-full object-cover"
           data-testid="img-memory-original"
           draggable={false}
         />
       </div>
 
-      {childName?.trim() && (
-        <div
-          className="absolute z-20 flex items-center rounded-full bg-[#fffdf8]/95 font-serif font-semibold text-[#1c2333] shadow-lg"
-          style={{
-            right: pct.x(1000 - n.right),
-            bottom: pct.y(1500 - n.bottom),
-            height: pct.y(n.h),
-            paddingInline: pct.cq(n.padX),
-            fontSize: pct.cq(n.size),
-            maxWidth: '55%',
-          }}
-        >
-          <span className="truncate leading-none">{childName}</span>
-        </div>
-      )}
-
       {showQr && qrCodeUrl && (
         <div
-          className="absolute z-20 flex flex-col items-center bg-white shadow-xl"
+          className="absolute z-20 bg-white shadow-lg"
           style={{
             left: pct.x(q.x),
             top: pct.y(q.y),
@@ -104,12 +80,6 @@ export function MemoryFrame({
             className="block aspect-square w-full [image-rendering:pixelated]"
             data-testid="img-qr"
           />
-          <span
-            className="mt-auto block w-full truncate text-center font-semibold leading-none text-[#1c2333]"
-            style={{ fontSize: pct.cq(GEO.caption.size) }}
-          >
-            {t('frame.scanCaption')}
-          </span>
         </div>
       )}
     </div>

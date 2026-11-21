@@ -12,13 +12,13 @@ export const FRAME_THEMES: FrameTheme[] = ['rainbow', 'gold', 'navy'];
 
 export const VB = { w: 1000, h: 1500 };
 
+// Layout: thick decorated border, photo filling the window (cropped to fit),
+// thicker bottom band, plain white QR square on the bottom-left corner.
 export const GEO = {
-  outerRadius: 60,
-  mat: { x: 50, y: 50, w: 900, h: 1400, r: 44 },
-  photo: { x: 64, y: 64, w: 872, h: 1372, r: 34 },
-  qrTile: { x: 40, y: 1138, w: 270, h: 322, r: 22, pad: 18, qr: 234 },
-  caption: { y: 1424, size: 25 },
-  name: { right: 920, bottom: 1410, h: 66, padX: 30, size: 36, r: 33 },
+  outerRadius: 70,
+  mat: { x: 72, y: 82, w: 856, h: 1268, r: 58 },
+  photo: { x: 86, y: 96, w: 828, h: 1240, r: 46 },
+  qrTile: { x: 46, y: 1118, w: 300, h: 300, r: 14, pad: 20, qr: 260 },
 };
 
 export const pct = {
@@ -53,14 +53,24 @@ const STAR = (() => {
 
 type Deco = [shape: 'sparkle' | 'heart' | 'star' | 'dot', x: number, y: number, size: number, rot?: number];
 
-// Ornaments sit on the frame band (outside the photo).
+// Ornaments sit on the frame band (outside the photo); the bottom-left corner
+// is left clear for the QR square.
 const DECOS: Deco[] = [
-  ['sparkle', 120, 26, 20], ['heart', 250, 25, 15, -12], ['star', 400, 25, 14], ['dot', 470, 25, 4],
-  ['sparkle', 560, 26, 18], ['heart', 700, 25, 14, 10], ['star', 830, 25, 13], ['sparkle', 930, 30, 16],
-  ['heart', 25, 260, 14, -10], ['sparkle', 25, 470, 17], ['star', 25, 690, 13], ['dot', 25, 790, 4], ['heart', 25, 960, 14, 12],
-  ['star', 975, 200, 13], ['heart', 975, 420, 14, 10], ['sparkle', 975, 640, 17], ['dot', 975, 760, 4],
-  ['heart', 975, 900, 14, -10], ['star', 975, 1100, 13], ['sparkle', 975, 1300, 17],
-  ['sparkle', 420, 1475, 17], ['heart', 560, 1475, 14, 8], ['star', 700, 1475, 13], ['dot', 780, 1475, 4], ['sparkle', 860, 1474, 16],
+  // top band
+  ['heart', 90, 48, 24, -14], ['sparkle', 190, 40, 18], ['dot', 250, 52, 5], ['heart', 320, 44, 16, 10],
+  ['sparkle', 420, 42, 22], ['star', 520, 46, 14], ['heart', 610, 40, 18, -8], ['dot', 680, 54, 5],
+  ['sparkle', 760, 42, 20], ['heart', 860, 46, 16, 12], ['sparkle', 945, 70, 16],
+  // left band
+  ['sparkle', 36, 180, 18], ['heart', 34, 300, 16, -10], ['dot', 38, 380, 5], ['sparkle', 36, 470, 20],
+  ['heart', 34, 590, 15, 12], ['star', 36, 700, 13], ['sparkle', 36, 820, 18], ['heart', 34, 940, 16, -8], ['dot', 38, 1040, 5],
+  // right band
+  ['heart', 964, 190, 16, 10], ['sparkle', 964, 300, 20], ['dot', 962, 400, 5], ['heart', 964, 500, 15, -10],
+  ['sparkle', 964, 620, 18], ['star', 964, 730, 13], ['heart', 964, 850, 16, 8], ['sparkle', 964, 970, 20],
+  ['dot', 962, 1070, 5], ['heart', 964, 1170, 15, -12], ['sparkle', 964, 1290, 18],
+  // bottom band (right of the QR)
+  ['sparkle', 410, 1400, 22], ['heart', 500, 1440, 18, -10], ['dot', 470, 1372, 5], ['sparkle', 580, 1385, 16],
+  ['heart', 650, 1420, 22, 8], ['star', 730, 1380, 14], ['sparkle', 800, 1440, 20], ['heart', 870, 1395, 16, -6],
+  ['dot', 930, 1440, 5], ['sparkle', 560, 1470, 14], ['heart', 380, 1470, 14, 6],
 ];
 
 function decorations(color: string, opacity: number, filter = DECOS): string {
@@ -208,21 +218,11 @@ export async function renderCardToCanvas(opts: RenderOptions): Promise<HTMLCanva
   if (!ctx) throw new Error('Canvas not supported');
   ctx.scale(s, s);
 
-  try {
-    await Promise.all([
-      document.fonts?.load(`600 ${GEO.name.size}px "Amiri"`),
-      document.fonts?.load(`600 ${GEO.name.size}px "Fraunces"`),
-      document.fonts?.load(`600 ${GEO.caption.size}px "IBM Plex Sans Arabic"`),
-    ]);
-  } catch {
-    /* fonts are optional */
-  }
-
   // 1. frame
   const frame = await loadImage(frameSvgDataUrl(opts.theme));
   ctx.drawImage(frame, 0, 0, VB.w, VB.h);
 
-  // 2. photo — blurred fill + full (uncropped) photo on top
+  // 2. photo — fills the window (cropped to fit, centred)
   const { photo } = GEO;
   const img = await loadImage(opts.photoUrl);
   const iw = img.naturalWidth || img.width;
@@ -232,53 +232,18 @@ export async function renderCardToCanvas(opts: RenderOptions): Promise<HTMLCanva
   ctx.clip();
   ctx.fillStyle = '#efe6dc';
   ctx.fillRect(photo.x, photo.y, photo.w, photo.h);
-  // Cheap, universally supported blur: downscale to a tiny canvas, then scale back up.
-  const cover = Math.max(photo.w / iw, photo.h / ih) * 1.15;
-  const tiny = document.createElement('canvas');
-  tiny.width = 24;
-  tiny.height = 36;
-  const tctx = tiny.getContext('2d');
-  if (tctx) {
-    tctx.drawImage(img, 0, 0, iw, ih, (24 - (iw * cover * 24) / photo.w) / 2, (36 - (ih * cover * 36) / photo.h) / 2, (iw * cover * 24) / photo.w, (ih * cover * 36) / photo.h);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.globalAlpha = 0.85;
-    ctx.drawImage(tiny, photo.x, photo.y, photo.w, photo.h);
-  }
-  ctx.globalAlpha = 1;
-  const contain = Math.min(photo.w / iw, photo.h / ih);
-  ctx.drawImage(img, photo.x + (photo.w - iw * contain) / 2, photo.y + (photo.h - ih * contain) / 2, iw * contain, ih * contain);
+  const cover = Math.max(photo.w / iw, photo.h / ih);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, photo.x + (photo.w - iw * cover) / 2, photo.y + (photo.h - ih * cover) / 2, iw * cover, ih * cover);
   ctx.restore();
 
-  // 3. name label
-  if (opts.childName?.trim()) {
-    const n = GEO.name;
-    ctx.font = `600 ${n.size}px "Amiri", "Fraunces", serif`;
-    ctx.direction = opts.isRTL ? 'rtl' : 'ltr';
-    const tw = Math.min(ctx.measureText(opts.childName).width, 520);
-    const w = tw + n.padX * 2;
-    const x = n.right - w;
-    const y = n.bottom - n.h;
+  // 3. QR — plain white square on the bottom-left corner
+  if (opts.qrCodeUrl) {
+    const q = GEO.qrTile;
     ctx.save();
     ctx.shadowColor = 'rgba(20,24,40,0.18)';
     ctx.shadowBlur = 14;
     ctx.shadowOffsetY = 4;
-    roundRect(ctx, x, y, w, n.h, n.r);
-    ctx.fillStyle = 'rgba(255,253,248,0.94)';
-    ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = '#1c2333';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(opts.childName, x + w / 2, y + n.h / 2 + 2, 520);
-  }
-
-  // 4. QR tile
-  if (opts.qrCodeUrl) {
-    const q = GEO.qrTile;
-    ctx.save();
-    ctx.shadowColor = 'rgba(20,24,40,0.22)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
     roundRect(ctx, q.x, q.y, q.w, q.h, q.r);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
@@ -287,12 +252,6 @@ export async function renderCardToCanvas(opts: RenderOptions): Promise<HTMLCanva
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(qr, q.x + q.pad, q.y + q.pad, q.qr, q.qr);
     ctx.imageSmoothingEnabled = true;
-    ctx.fillStyle = '#1c2333';
-    ctx.font = `600 ${GEO.caption.size}px "IBM Plex Sans Arabic", "Inter", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.direction = opts.isRTL ? 'rtl' : 'ltr';
-    ctx.fillText(opts.caption, q.x + q.w / 2, GEO.caption.y, q.w - 20);
   }
 
   return canvas;

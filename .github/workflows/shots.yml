@@ -1,0 +1,31 @@
+name: Screenshots
+on:
+  push:
+    branches: [shots]
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LIVE_URL: https://hamsat-thikra.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-color-emoji >/dev/null
+      - name: Take screenshots
+        working-directory: e2e
+        run: node shots.mjs
+      - name: Publish
+        run: |
+          cd e2e/shots && git init -q && git checkout -q -b shots-out
+          git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm "screenshots ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" shots-out

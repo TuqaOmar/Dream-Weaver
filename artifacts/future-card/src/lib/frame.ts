@@ -17,7 +17,7 @@ export const VB = { w: 1000, h: 1500 };
 export const GEO = {
   outerRadius: 70,
   mat: { x: 72, y: 82, w: 856, h: 1268, r: 58 },
-  photo: { x: 86, y: 96, w: 828, h: 1240, r: 46 },
+  photo: { x: 72, y: 82, w: 856, h: 1268, r: 58 },
   qrTile: { x: 46, y: 1118, w: 300, h: 300, r: 14, pad: 20, qr: 260 },
 };
 
@@ -154,11 +154,9 @@ export function themeMat(theme: FrameTheme) {
 /** Full frame artwork (background, ornaments and the white mat). */
 export function buildFrameSvg(theme: FrameTheme): string {
   const t = THEMES[theme];
-  const { mat } = GEO;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB.w} ${VB.h}" width="${VB.w}" height="${VB.h}">
 <defs>${t.defs}<clipPath id="outer"><rect width="1000" height="1500" rx="${GEO.outerRadius}"/></clipPath></defs>
 <g clip-path="url(#outer)">${t.background}${t.decorations}</g>
-<rect x="${mat.x}" y="${mat.y}" width="${mat.w}" height="${mat.h}" rx="${mat.r}" fill="${t.mat}"/>
 </svg>`;
 }
 

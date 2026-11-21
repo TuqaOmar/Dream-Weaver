@@ -86,20 +86,33 @@ function decorations(color: string, opacity: number, filter = DECOS): string {
 const THEMES: Record<FrameTheme, ThemeSpec> = {
   rainbow: {
     label: { ar: 'ألوان الطفولة', en: 'Rainbow' },
-    swatch: 'linear-gradient(135deg,#ef5fa7,#ffd04a,#5fd3a5,#3fc6dc,#ff7c88)',
-    mat: '#fffdf8',
+    swatch: 'linear-gradient(135deg,#f9a8d4,#fde68a,#a7f3d0,#a5d8ff,#d8b4fe)',
+    mat: '#ffffff',
+    // Soft watercolour: a pastel base with large blurred colour washes on top.
     defs: `
       <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#ec5ea8"/><stop offset="0.3" stop-color="#ffd24d"/>
-        <stop offset="0.56" stop-color="#77d6a6"/><stop offset="0.78" stop-color="#42c8da"/>
-        <stop offset="1" stop-color="#ff7d8a"/>
+        <stop offset="0" stop-color="#ffc2dd"/><stop offset="0.28" stop-color="#ffe6a8"/>
+        <stop offset="0.52" stop-color="#bff0d6"/><stop offset="0.76" stop-color="#bfe0ff"/>
+        <stop offset="1" stop-color="#e2c8ff"/>
       </linearGradient>
-      <radialGradient id="g1" cx="0.08" cy="0.1" r="0.45"><stop offset="0" stop-color="#ee47a0" stop-opacity="0.9"/><stop offset="1" stop-color="#ee47a0" stop-opacity="0"/></radialGradient>
-      <radialGradient id="g2" cx="0.95" cy="0.4" r="0.4"><stop offset="0" stop-color="#37caa3" stop-opacity="0.85"/><stop offset="1" stop-color="#37caa3" stop-opacity="0"/></radialGradient>
-      <radialGradient id="g3" cx="0.88" cy="0.95" r="0.45"><stop offset="0" stop-color="#ff6f7d" stop-opacity="0.9"/><stop offset="1" stop-color="#ff6f7d" stop-opacity="0"/></radialGradient>
-      <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="1.5" fill="#fff" opacity="0.45"/></pattern>`,
-    background: `<rect width="1000" height="1500" fill="url(#bg)"/><rect width="1000" height="1500" fill="url(#g1)"/><rect width="1000" height="1500" fill="url(#g2)"/><rect width="1000" height="1500" fill="url(#g3)"/><rect width="1000" height="1500" fill="url(#dots)"/>`,
-    decorations: decorations('#ffffff', 0.92),
+      <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="55"/></filter>
+      <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.10 0"/></filter>
+      <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="11" cy="11" r="1.6" fill="#fff" opacity="0.35"/></pattern>`,
+    background: `<rect width="1000" height="1500" fill="url(#bg)"/>
+      <g filter="url(#soft)" opacity="0.85">
+        <ellipse cx="80" cy="120" rx="260" ry="230" fill="#ff9cc9"/>
+        <ellipse cx="560" cy="40" rx="260" ry="140" fill="#ffd27a"/>
+        <ellipse cx="960" cy="180" rx="200" ry="260" fill="#ffb38a"/>
+        <ellipse cx="990" cy="620" rx="170" ry="300" fill="#8fe3c0"/>
+        <ellipse cx="980" cy="1080" rx="190" ry="280" fill="#86c9ff"/>
+        <ellipse cx="760" cy="1480" rx="320" ry="170" fill="#a9b8ff"/>
+        <ellipse cx="300" cy="1470" rx="300" ry="170" fill="#7fd8e8"/>
+        <ellipse cx="20" cy="1180" rx="170" ry="260" fill="#d6a8ff"/>
+        <ellipse cx="10" cy="660" rx="150" ry="280" fill="#ffb0d8"/>
+      </g>
+      <rect width="1000" height="1500" fill="url(#dots)"/>
+      <rect width="1000" height="1500" filter="url(#paper)"/>`,
+    decorations: decorations('#ffffff', 0.95),
   },
   gold: {
     label: { ar: 'ذهبي كلاسيك', en: 'Classic gold' },

@@ -14,6 +14,8 @@ export const cardsTable = pgTable("cards", {
   qrCodeUrl: text("qr_code_url"),
   status: text("status").notNull().default("draft"),
   language: text("language").notNull().default("en"),
+  // Secret key of the browser that created the card (never sent back to clients).
+  ownerKey: text("owner_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

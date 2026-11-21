@@ -32,9 +32,10 @@ const decode = (dataUrl) => {
   return jsQR(new Uint8ClampedArray(png.data), png.width, png.height)?.data ?? null;
 };
 
-async function api(p, init) {
+const LIVE_KEY = 'live-check-' + Math.random().toString(36).slice(2).padEnd(12, '0');
+async function api(p, init = {}, key = LIVE_KEY) {
   try {
-    const r = await fetch(BASE + p, init);
+    const r = await fetch(BASE + p, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${key}` } });
     const text = await r.text();
     return { status: r.status, text };
   } catch (e) {
@@ -82,6 +83,7 @@ for (const [name, p] of [['home', '/'], ['create', '/create'], ['dashboard', '/d
 }
 
 let cardId = null;
+let uiKey = null;
 const newUi = (await page.goto(BASE + '/create').then(() => page.$('[data-testid="input-photo"]'))) !== null;
 log('new UI deployed', newUi);
 
@@ -97,6 +99,7 @@ try {
     await page.click('[data-testid="button-finish"]');
     await page.waitForURL(/\/card\//, { timeout: 45000 });
     cardId = page.url().split('/card/')[1];
+    uiKey = await page.evaluate(() => localStorage.getItem('future-card:owner-key'));
     await page.waitForSelector('[data-testid="qr-destination"] img', { timeout: 20000 });
     await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(OUT, 'card.png'), fullPage: true });
@@ -125,7 +128,7 @@ try {
 }
 
 if (cardId) {
-  const r = await api(`/api/cards/${cardId}`);
+  const r = await api(`/api/cards/${cardId}`, {}, uiKey);
   let card = null;
   try { card = JSON.parse(r.text); } catch {}
   const target = card?.qrCodeUrl ? decode(card.qrCodeUrl) : null;
@@ -144,7 +147,9 @@ if (cardId) {
     log('scanned page plays the voice', !!audioOk || phone.url().includes('drive.google.com'));
     await phoneCtx.close();
   }
-  const d = await api(`/api/cards/${cardId}`, { method: 'DELETE' });
+  const other = await api(`/api/cards/${cardId}`, {}, 'someone-else-0000000000');
+  log('another browser cannot open the card', other.status === 404, other.status);
+  const d = await api(`/api/cards/${cardId}`, { method: 'DELETE' }, uiKey);
   log('cleanup test card', d.status === 204, d.status);
 }
 

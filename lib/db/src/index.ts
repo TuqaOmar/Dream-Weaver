@@ -82,6 +82,16 @@ export function ensureSchema(): Promise<void> {
           updated_at timestamp NOT NULL DEFAULT now()
         )`,
       )
+      .then(() =>
+        (instance.db as any).execute(
+          sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS owner_key text`,
+        ),
+      )
+      .then(() =>
+        (instance.db as any).execute(
+          sql`CREATE INDEX IF NOT EXISTS cards_owner_key_idx ON cards (owner_key)`,
+        ),
+      )
       .then(() => undefined)
       .catch((err: unknown) => {
         schemaReady = null;

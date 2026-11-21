@@ -9,6 +9,9 @@ import { chromium, devices } from 'playwright';
 import { PNG } from 'pngjs';
 import jsQR from 'jsqr';
 
+const AUTH_A = { Authorization: 'Bearer e2e-owner-aaaaaaaaaaaaaaaa' };
+const AUTH_B = { Authorization: 'Bearer e2e-owner-bbbbbbbbbbbbbbbb' };
+
 const DRIVE_APP = process.env.DRIVE_APP || 'http://127.0.0.1:8080';
 const SITE_APP = process.env.SITE_APP || 'http://127.0.0.1:8081';
 const MOCK = process.env.MOCK_GOOGLE || 'http://127.0.0.1:9999';
@@ -148,16 +151,40 @@ await step('API: Drive links are normalised in every common format', async () =>
   for (const [input, expected] of Object.entries(cases)) {
     const res = await fetch(`${SITE_APP}/api/cards`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...AUTH_A },
       body: JSON.stringify({ childName: 'link-test', voiceMessageUrl: input }),
     });
     assert.equal(res.status, 201);
     const card = await res.json();
     assert.equal(card.voiceMessageUrl, expected, input);
-    const gen = await (await fetch(`${SITE_APP}/api/cards/${card.id}/generate`, { method: 'POST' })).json();
+    const gen = await (await fetch(`${SITE_APP}/api/cards/${card.id}/generate`, { method: 'POST', headers: AUTH_A })).json();
     assert.equal(decodeQrDataUrl(gen.qrCodeUrl), expected, `QR for ${input}`);
-    await fetch(`${SITE_APP}/api/cards/${card.id}`, { method: 'DELETE' });
+    await fetch(`${SITE_APP}/api/cards/${card.id}`, { method: 'DELETE', headers: AUTH_A });
   }
+});
+
+await step('API: cards are private to the browser that made them', async () => {
+  const res = await fetch(`${SITE_APP}/api/cards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...AUTH_A },
+    body: JSON.stringify({ childName: 'owner-test' }),
+  });
+  assert.equal(res.status, 201);
+  const card = await res.json();
+  assert.equal('ownerKey' in card, false, 'owner key must never be returned');
+  const listA = await (await fetch(`${SITE_APP}/api/cards`, { headers: AUTH_A })).json();
+  const listB = await (await fetch(`${SITE_APP}/api/cards`, { headers: AUTH_B })).json();
+  const listNone = await (await fetch(`${SITE_APP}/api/cards`)).json();
+  assert.ok(listA.some((c) => c.id === card.id), 'owner sees the card');
+  assert.ok(!listB.some((c) => c.id === card.id), 'other browser does not see it');
+  assert.equal(listNone.length, 0, 'no key → no cards');
+  assert.equal((await fetch(`${SITE_APP}/api/cards/${card.id}`, { headers: AUTH_B })).status, 404);
+  assert.equal((await fetch(`${SITE_APP}/api/cards/${card.id}`, { method: 'DELETE', headers: AUTH_B })).status, 404);
+  assert.equal((await fetch(`${SITE_APP}/api/cards/${card.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...AUTH_B }, body: '{"childName":"x"}' })).status, 404);
+  const pub = await fetch(`${SITE_APP}/api/cards/public/${card.id}`);
+  assert.equal(pub.status, 200, 'listen page stays public');
+  assert.equal('ownerKey' in (await pub.json()), false);
+  assert.equal((await fetch(`${SITE_APP}/api/cards/${card.id}`, { method: 'DELETE', headers: AUTH_A })).status, 204);
 });
 
 await step('Home page renders (ar + en)', async () => {
@@ -254,7 +281,10 @@ await step('Dashboard lists the cards', async () => {
 });
 
 await step('Mobile layout of the create wizard and card page', async () => {
+  const ownerKey = await page.evaluate(() => localStorage.getItem('future-card:owner-key'));
   const mobile = await browser.newContext({ ...devices['iPhone 13'] });
+  // Same owner as the desktop browser, so the private card page opens.
+  await mobile.addInitScript((k) => k && localStorage.setItem('future-card:owner-key', k), ownerKey);
   const p = await mobile.newPage();
   await p.goto(`${DRIVE_APP}/`);
   await p.screenshot({ path: path.join(OUT, 'mobile-home.png'), fullPage: true });

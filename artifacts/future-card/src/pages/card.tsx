@@ -27,6 +27,7 @@ import {
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { ownerHeaders } from '@/lib/owner';
 import { MemoryFrame } from '@/components/MemoryFrame';
 import { VoicePlayer } from '@/components/VoicePlayer';
 import { FRAME_THEMES, type FrameTheme, loadTheme, saveTheme, themeLabel, themeSwatch, renderCardToCanvas } from '@/lib/frame';
@@ -141,7 +142,7 @@ export default function CardView() {
 
   const deletePhoto = async () => {
     if (!card || !confirm(t('card.deletePhotoConfirm'))) return;
-    await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE' });
+    await fetch(`/api/cards/${card.id}/photo`, { method: 'DELETE', headers: ownerHeaders() });
     refetch();
   };
 

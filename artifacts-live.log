@@ -1,0 +1,20 @@
+OK   GET /api/healthz — 200 {"status":"ok"}
+OK   GET /api/healthz?db=1 — 200 {"status":"ok","database":"ok","cards":4}
+OK   GET /api/config — 200 {"driveEnabled":false,"maxUploadBytes":4194304}
+OK   GET /api/cards/stats/summary — 200 {"total":0,"completed":0,"drafts":0,"generating":0,"professionBreakdown":[],"recentCards":[]}
+OK   POST /api/cards (database write) — 201 {"id":"a9547d29-4dfa-4251-8c19-4a7ee24e5ca6","childName":"__live-check__","profession":"memory","customProfession":null,"childPhotoUrl":null,"aiImageUrl":null,"voiceMessageUrl":null,"parentMessage":null,"qrCodeUrl":null,"status":"draft","language":"en","createdAt":"2026-11-22T06:17:18.722Z","updatedAt":"2026-11-22T06:17:18.722Z"}
+OK   GET /api/cards (database read) — 200 []
+OK   deep link /listen/:id serves the app — 200
+OK   page / — 200
+OK   page /create — 200
+OK   page /dashboard — 200
+OK   new UI deployed
+OK   create card through UI — https://hamsat-thikra.vercel.app/card/a459ccec-7887-44f1-817b-1d5eb3fef066
+OK   QR decodes — https://hamsat-thikra.vercel.app/listen/a459ccec-7887-44f1-817b-1d5eb3fef066
+OK   voice stored — data:audio/wav;base64,UklGRiT6AABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQD6AA
+OK   scanned QR opens on another phone — 200 → https://hamsat-thikra.vercel.app/listen/a459ccec-7887-44f1-817b-1d5eb3fef066
+OK   scanned page plays the voice
+OK   another browser cannot open the card — 404
+OK   cleanup test card — 204
+OK   browser console errors — []
+OK   failed API requests — []

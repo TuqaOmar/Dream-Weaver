@@ -1,0 +1,103 @@
+{
+  "base": "https://hamsat-thikra.vercel.app",
+  "checks": [
+    {
+      "name": "GET /api/healthz",
+      "ok": true,
+      "detail": "200 {\"status\":\"ok\"}"
+    },
+    {
+      "name": "GET /api/healthz?db=1",
+      "ok": true,
+      "detail": "200 {\"status\":\"ok\",\"database\":\"ok\",\"cards\":4}"
+    },
+    {
+      "name": "GET /api/config",
+      "ok": true,
+      "detail": "200 {\"driveEnabled\":false,\"maxUploadBytes\":4194304}"
+    },
+    {
+      "name": "GET /api/cards/stats/summary",
+      "ok": true,
+      "detail": "200 {\"total\":0,\"completed\":0,\"drafts\":0,\"generating\":0,\"professionBreakdown\":[],\"recentCards\":[]}"
+    },
+    {
+      "name": "POST /api/cards (database write)",
+      "ok": true,
+      "detail": "201 {\"id\":\"a9547d29-4dfa-4251-8c19-4a7ee24e5ca6\",\"childName\":\"__live-check__\",\"profession\":\"memory\",\"customProfession\":null,\"childPhotoUrl\":null,\"aiImageUrl\":null,\"voiceMessageUrl\":null,\"parentMessage\":null,\"qrCodeUrl\":null,\"status\":\"draft\",\"language\":\"en\",\"createdAt\":\"2026-11-22T06:17:18.722Z\",\"updatedAt\":\"2026-11-22T06:17:18.722Z\"}"
+    },
+    {
+      "name": "GET /api/cards (database read)",
+      "ok": true,
+      "detail": "200 []"
+    },
+    {
+      "name": "deep link /listen/:id serves the app",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /create",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "page /dashboard",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "new UI deployed",
+      "ok": true
+    },
+    {
+      "name": "create card through UI",
+      "ok": true,
+      "detail": "https://hamsat-thikra.vercel.app/card/a459ccec-7887-44f1-817b-1d5eb3fef066"
+    },
+    {
+      "name": "QR decodes",
+      "ok": true,
+      "detail": "https://hamsat-thikra.vercel.app/listen/a459ccec-7887-44f1-817b-1d5eb3fef066"
+    },
+    {
+      "name": "voice stored",
+      "ok": true,
+      "detail": "data:audio/wav;base64,UklGRiT6AABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQD6AA"
+    },
+    {
+      "name": "scanned QR opens on another phone",
+      "ok": true,
+      "detail": "200 → https://hamsat-thikra.vercel.app/listen/a459ccec-7887-44f1-817b-1d5eb3fef066"
+    },
+    {
+      "name": "scanned page plays the voice",
+      "ok": true
+    },
+    {
+      "name": "another browser cannot open the card",
+      "ok": true,
+      "detail": 404
+    },
+    {
+      "name": "cleanup test card",
+      "ok": true,
+      "detail": 204
+    },
+    {
+      "name": "browser console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "failed API requests",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

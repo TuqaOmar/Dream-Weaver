@@ -302,7 +302,18 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="py-8 text-center text-sm text-muted-foreground">
+      <footer className="space-y-2 py-8 text-center text-sm text-muted-foreground" data-testid="footer">
+        <p>
+          {t('footer.madeBy')}{' '}
+          <a
+            href="https://www.linkedin.com/in/tuqa-dahab/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            {t('footer.author')}
+          </a>
+        </p>
         <span className="inline-flex items-center gap-1.5">{t('memory.brand')} <Heart className="h-4 w-4" /> {new Date().getFullYear()}</span>
       </footer>
     </div>
